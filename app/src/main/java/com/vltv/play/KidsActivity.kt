@@ -320,7 +320,7 @@ class KidsActivity : AppCompatActivity() {
         etSearchKids         = findViewById(R.id.etSearchKids)
         layoutSearchBar      = findViewById(R.id.layoutSearchBar)
         layoutContinueHeader = findViewById(R.id.layoutContinueHeader)
-        btnVoiceKids         = findViewById(R.id.btnVoiceKids)
+        btnVoiceKids         = findViewById<LinearLayout?>(R.id.btnVoiceKids) ?: LinearLayout(this) // TV: layout padrão não tem o botão de voz
 
         // ── Voltar (topo) ────────────────────────────────────────────────
         // ✅ AJUSTE: antes chamava finish() direto, saindo da Área Kids sem

@@ -329,7 +329,7 @@ class HomeActivity : AppCompatActivity() {
             // baixando + pausado) do perfil atual. Usa a LiveData que já
             // existe no StreamDao (getDownloadsByProfile) — atualiza
             // sozinho, sem polling, toda vez que a tabela "downloads" muda.
-            observarBadgeDownloads()
+            if (!isTelevisionDevice()) observarBadgeDownloads()
 
             adicionarWordmarkVLTV()
             ajustarHeaderParaStatusBar()
@@ -2067,7 +2067,8 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun aplicarRetroGamesCard(remoteConfig: com.google.firebase.remoteconfig.FirebaseRemoteConfig) {
-        val show = remoteConfig.getBoolean("show_retro_games")
+        // TV: Jogos Retrô nunca aparece (só no celular)
+        val show = remoteConfig.getBoolean("show_retro_games") && !isTelevisionDevice()
         binding.cardRetroGames?.visibility = if (show) View.VISIBLE else View.GONE
     }
 
@@ -2619,7 +2620,15 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun setupClicks() {
+        // TV: Downloads e Jogos Retrô não aparecem (só no celular)
+        if (isTelevisionDevice()) {
+            binding.cardDownloads.visibility = View.GONE
+            binding.cardDownloads.isFocusable = false
+            binding.cardRetroGames?.visibility = View.GONE
+            binding.cardRetroGames?.isFocusable = false
+        }
         val cards = listOfNotNull(binding.cardLiveTv, binding.cardMovies, binding.cardSeries, binding.cardDownloads, binding.cardRetroGames)
+            .filter { !(isTelevisionDevice() && (it.id == R.id.cardDownloads || it.id == R.id.cardRetroGames)) }
         cards.forEach { card ->
             card.isFocusable = true
             card.isClickable = true
@@ -2684,14 +2693,7 @@ class HomeActivity : AppCompatActivity() {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && event.action == KeyEvent.ACTION_DOWN) {
                     binding.cardMovies.requestFocus(); true
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && event.action == KeyEvent.ACTION_DOWN) {
-                    binding.cardDownloads.requestFocus(); true
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP && event.action == KeyEvent.ACTION_DOWN) {
-                    binding.bannerViewPager?.requestFocus(); true
-                } else false
-            }
-            binding.cardDownloads.setOnKeyListener { _, keyCode, event ->
-                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && event.action == KeyEvent.ACTION_DOWN) {
-                    binding.cardSeries.requestFocus(); true
+                    true // TV: sem Downloads à direita, o foco fica em Séries
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP && event.action == KeyEvent.ACTION_DOWN) {
                     binding.bannerViewPager?.requestFocus(); true
                 } else false

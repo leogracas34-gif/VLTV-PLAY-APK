@@ -127,6 +127,12 @@ class ProfilesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Celular: retrato travado (como antes). TV: paisagem.
+        requestedOrientation = if (isTelevisionDevice()) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        } else {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        }
         binding = ActivityProfileSelectionBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

@@ -1303,10 +1303,17 @@ class SeriesDetailsActivity : AppCompatActivity() {
             val tvTitle: TextView             = v.findViewById(R.id.tvEpisodeTitle)
             val imgThumb: ImageView           = v.findViewById(R.id.imgEpisodeThumb)
             val tvPlotEp: TextView            = v.findViewById(R.id.tvEpisodePlot)
-            val btnDownloadItem: FrameLayout  = v.findViewById(R.id.btnDownloadEpisode)
-            val imgDownloadIcon: ImageView    = v.findViewById(R.id.imgDownloadIcon)
+            // TV: o layout padrão (res/layout/item_episode.xml) não tem os
+            // elementos de download (só existem no celular). Em vez de crashar
+            // com findViewById nulo, usa views "soltas" (não anexadas à tela)
+            // — o resto do código continua funcionando sem efeito visual.
+            val btnDownloadItem: FrameLayout  =
+                v.findViewById<FrameLayout?>(R.id.btnDownloadEpisode) ?: FrameLayout(v.context)
+            val imgDownloadIcon: ImageView    =
+                v.findViewById<ImageView?>(R.id.imgDownloadIcon) ?: ImageView(v.context)
             val pbDownload: com.google.android.material.progressindicator.CircularProgressIndicator =
-                v.findViewById(R.id.pbEpisodeDownload)
+                v.findViewById<com.google.android.material.progressindicator.CircularProgressIndicator?>(R.id.pbEpisodeDownload)
+                    ?: com.google.android.material.progressindicator.CircularProgressIndicator(v.context)
             val pbEpisodeProgress: ProgressBar? = v.findViewById(R.id.pbEpisodeProgress)
         }
 
