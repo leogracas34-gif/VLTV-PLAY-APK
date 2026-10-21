@@ -151,6 +151,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:logo="@mipmap/ic_launcher_round"
+        android:banner="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="VLTV+"
         android:supportsRtl="true"
@@ -164,6 +165,7 @@
              Agora aponta pra SplashActivity em vez de LoginActivity. -->
         <activity-alias
             android:name=".LauncherNormal"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="true"
             android:exported="true"
@@ -181,6 +183,7 @@
              Também aponta pra SplashActivity. -->
         <activity-alias
             android:name=".LauncherCopa"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="false"
             android:exported="true"
@@ -198,6 +201,7 @@
              pela chave tema_icone_ativo="halloween" no Remote Config) -->
         <activity-alias
             android:name=".LauncherHalloween"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="false"
             android:exported="true"
@@ -214,6 +218,7 @@
         <!-- ✅ NOVO: LAUNCHER DIA DAS CRIANÇAS (tema_icone_ativo="criancas") -->
         <activity-alias
             android:name=".LauncherCriancas"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="false"
             android:exported="true"
@@ -230,6 +235,7 @@
         <!-- ✅ NOVO: LAUNCHER NATAL (tema_icone_ativo="natal") -->
         <activity-alias
             android:name=".LauncherNatal"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="false"
             android:exported="true"
@@ -246,6 +252,7 @@
         <!-- ✅ NOVO: LAUNCHER ANO NOVO (tema_icone_ativo="ano_novo") -->
         <activity-alias
             android:name=".LauncherAnoNovo"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="false"
             android:exported="true"
@@ -262,6 +269,7 @@
         <!-- ✅ NOVO: LAUNCHER CARNAVAL (tema_icone_ativo="carnaval") -->
         <activity-alias
             android:name=".LauncherCarnaval"
+            android:banner="@mipmap/ic_launcher"
             android:targetActivity=".SplashActivity"
             android:enabled="false"
             android:exported="true"
@@ -359,11 +367,10 @@
         <activity android:name=".SettingsActivity" android:banner="@mipmap/ic_launcher" android:screenOrientation="unspecified" />
         <activity android:name=".DownloadsActivity" android:banner="@mipmap/ic_launcher" android:screenOrientation="unspecified" />
         <activity android:name=".KidsActivity" android:banner="@mipmap/ic_launcher" android:screenOrientation="unspecified" android:exported="false" />
-        <activity android:name=".ProfilesActivity" android:exported="false" android:screenOrientation="sensorPortrait" android:theme="@style/Theme.AppCompat.NoActionBar" />
+        <activity android:name=".ProfilesActivity" android:exported="false" android:screenOrientation="unspecified" android:theme="@style/Theme.AppCompat.NoActionBar" />
         <activity android:name=".NovidadesActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name=".EditProfileActivity" />
         <activity android:name=".TmdbDetailsActivity" />
-        <activity android:name=".CopaMundoActivity" android:screenOrientation="portrait" />
         <activity android:name=".SeriesEpisodesActivity" />
         <activity android:name=".KidsDownloadsActivity" android:exported="false" />
         <activity android:name=".KidsSeriesEpisodesActivity" android:exported="false" />
