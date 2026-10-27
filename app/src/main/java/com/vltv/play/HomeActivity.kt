@@ -214,6 +214,15 @@ class HomeActivity : AppCompatActivity() {
         private const val INTERVALO_MINIMO_FETCH_MS = 30_000L
 
         private const val TMDB_TIMEOUT_MS = 8000
+
+        // ✅ Destaque da semana vem da VPS (aba "Destaque da semana" do painel admin, a MESMA das TVs LG/Samsung).
+        // Rota pública /lg/config: devolve destaque_ativo, destaque_tipo, destaque_nome, destaque_sinopse,
+        // destaque_tmdb e destaque_imagem. No máximo 1 consulta a cada 40 s por abertura da Home.
+        @Volatile private var ultimoFetchDestaqueMs = 0L
+        private const val INTERVALO_MINIMO_DESTAQUE_MS = 40_000L
+        private const val URL_BASE_VPS = "https://api.vltvplay.tech"
+        private const val PREF_DESTAQUE_JSON = "destaque_vps_json"
+        private const val PREF_DESTAQUE_RESOLVIDO = "destaque_vps_resolvido"
     }
 
     private class UntintableDrawable(private val base: Drawable) : Drawable() {
@@ -1958,6 +1967,9 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun setupFirebaseRemoteConfig() {
+        // ✅ Destaque da semana: vem da VPS e não depende do Firebase (nem espera ele responder).
+        atualizarDestaqueDaVps()
+
         val remoteConfig = Firebase.remoteConfig
         remoteConfig.setDefaultsAsync(mapOf(
             "show_copa_icon"        to false,
@@ -1986,12 +1998,6 @@ class HomeActivity : AppCompatActivity() {
             "game_banner_team_home"   to "",
             "game_banner_team_away"   to "",
             "games_today_json"       to "",
-            "show_featured_banner"  to false,
-            "featured_title"        to "",
-            "featured_synopsis"     to "",
-            "featured_image_url"    to "",
-            "featured_is_series"    to false,
-            "featured_content_id"   to "",
             "show_retro_games"      to true
         ))
         remoteConfig.setConfigSettingsAsync(remoteConfigSettings {
@@ -2010,7 +2016,6 @@ class HomeActivity : AppCompatActivity() {
             )
             IconeSazonalHelper.aplicar(this)
             aplicarGameBanner(remoteConfig)
-            aplicarFeaturedBanner(remoteConfig)
             aplicarRetroGamesCard(remoteConfig)
             aplicarTemaBanner(remoteConfig)
             TemaVisualManager.aplicarEm(this, binding.overlayTemaSazonal.root)
@@ -2024,8 +2029,6 @@ class HomeActivity : AppCompatActivity() {
                     "VLTV_RemoteConfig",
                     "fetchAndActivate OK — games_today_json='${remoteConfig.getString("games_today_json")}' " +
                     "show_game_banner=${remoteConfig.getBoolean("show_game_banner")} " +
-                    "show_featured_banner=${remoteConfig.getBoolean("show_featured_banner")} " +
-                    "featured_title='${remoteConfig.getString("featured_title")}' " +
                     "show_retro_games=${remoteConfig.getBoolean("show_retro_games")}"
                 )
             } else {
@@ -2059,7 +2062,6 @@ class HomeActivity : AppCompatActivity() {
             }
             IconeSazonalHelper.aplicar(this)
             aplicarGameBanner(remoteConfig)
-            aplicarFeaturedBanner(remoteConfig)
             aplicarRetroGamesCard(remoteConfig)
             aplicarTemaBanner(remoteConfig)
             TemaVisualManager.aplicarEm(this, binding.overlayTemaSazonal.root)
@@ -2310,59 +2312,197 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
-    private fun aplicarFeaturedBanner(remoteConfig: com.google.firebase.remoteconfig.FirebaseRemoteConfig) {
-        val show        = remoteConfig.getBoolean("show_featured_banner")
-        val title       = remoteConfig.getString("featured_title")
-        val synopsis    = remoteConfig.getString("featured_synopsis")
-        val imageUrl    = remoteConfig.getString("featured_image_url")
-        val isSeriesRC  = remoteConfig.getBoolean("featured_is_series")
-        val contentIdRC = remoteConfig.getString("featured_content_id")
+    // ───────────────────────────────────────────────────────────────────
+    // ✅ Destaque da semana — vem da VPS (painel admin > aba "Destaque da semana"),
+    // o MESMO destaque que aparece nas TVs LG e Samsung. Substitui o Firebase Remote Config
+    // (chaves show_featured_banner / featured_* não são mais lidas).
+    //   destaque_ativo   "true" | "false"      destaque_tipo   "filmes" | "series"
+    //   destaque_nome    nome (igual ao TMDB)  destaque_sinopse texto opcional (vazio = sinopse do TMDB)
+    //   destaque_tmdb    ID do TMDB opcional   destaque_imagem  JPEG opcional (só se o TMDB não tiver fundo)
+    // ───────────────────────────────────────────────────────────────────
+    private data class DestaqueVps(
+        val ativo: Boolean,
+        val isSeries: Boolean,
+        val nome: String,
+        val sinopse: String,
+        val tmdbId: String,
+        val imagem: String
+    )
 
+    private var destaqueAplicado: DestaqueVps? = null
+    private var idDestaque = 0
+
+    private fun destaqueDoJson(j: JSONObject): DestaqueVps {
+        val ativoTxt = j.optString("destaque_ativo", "").trim().lowercase()
+        return DestaqueVps(
+            ativo    = ativoTxt == "true" || ativoTxt == "1",
+            isSeries = j.optString("destaque_tipo", "filmes").trim().lowercase().startsWith("s"),
+            nome     = j.optString("destaque_nome", "").trim(),
+            sinopse  = j.optString("destaque_sinopse", "").trim(),
+            tmdbId   = j.optString("destaque_tmdb", "").filter { it.isDigit() },
+            imagem   = j.optString("destaque_imagem", "").trim()
+        )
+    }
+
+    // Imagem própria: endereço completo (https://...) ou caminho da VPS (/arquivo.jpg).
+    private fun urlImagemPropriaDestaque(u: String): String = when {
+        u.startsWith("http://") || u.startsWith("https://") -> u
+        u.startsWith("/") -> URL_BASE_VPS + u
+        else -> ""
+    }
+
+    private fun atualizarDestaqueDaVps() {
+        val prefs = getSharedPreferences("vltv_prefs", Context.MODE_PRIVATE)
+
+        // 1) Mostra na hora o último destaque guardado (a Home não espera a VPS).
+        try {
+            prefs.getString(PREF_DESTAQUE_JSON, null)?.let { aplicarDestaqueVps(destaqueDoJson(JSONObject(it))) }
+        } catch (e: Exception) { e.printStackTrace() }
+
+        // 2) Pergunta à VPS (no máximo 1 vez a cada 40 s). Sem resposta: fica o último destaque guardado.
+        val agora = System.currentTimeMillis()
+        if (agora - ultimoFetchDestaqueMs < INTERVALO_MINIMO_DESTAQUE_MS) return
+        ultimoFetchDestaqueMs = agora
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // "?_=" evita resposta velha guardada em cache no caminho.
+                val bruto = fetchUrlComTimeout("$URL_BASE_VPS/lg/config?_=$agora", 8000)
+                val novo = destaqueDoJson(JSONObject(bruto))
+                prefs.edit().putString(PREF_DESTAQUE_JSON, bruto).apply()
+                withContext(Dispatchers.Main) {
+                    if (!isFinishing && !isDestroyed) aplicarDestaqueVps(novo)
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("VLTV_Destaque", "Sem resposta da VPS; fica o último destaque guardado: ${e.message}")
+            }
+        }
+    }
+
+    private fun aplicarDestaqueVps(d: DestaqueVps) {
         val card = binding.cardFeaturedBanner ?: return
-        if (!show || title.isBlank()) {
+
+        if (!d.ativo || d.nome.isBlank()) {
             card.visibility = View.GONE
+            destaqueAplicado = null
             ultimoFeaturedTitleAplicado = null
             featuredBannerEncontrado = false
+            idDestaque++
             return
         }
 
-        card.findViewById<TextView>(R.id.tvFeaturedTitle).text = title
+        // Nada mudou desde a última vez: não mexe (evita piscar).
+        if (d == destaqueAplicado) {
+            if (featuredBannerEncontrado) card.visibility = View.VISIBLE
+            return
+        }
+        destaqueAplicado = d
+        ultimoFeaturedTitleAplicado = null
+        featuredBannerEncontrado = false
+        val meuId = ++idDestaque
 
+        // Título e sinopse digitada no painel aparecem já.
+        card.findViewById<TextView>(R.id.tvFeaturedTitle).text = d.nome
         val tvSynopsis = card.findViewById<TextView>(R.id.tvFeaturedSynopsis)
-        if (synopsis.isNotBlank()) {
-            tvSynopsis.text = synopsis
+        if (d.sinopse.isNotBlank()) {
+            tvSynopsis.text = d.sinopse
             tvSynopsis.visibility = View.VISIBLE
         } else {
             tvSynopsis.visibility = View.GONE
         }
 
-        if (imageUrl.isNotBlank()) {
-    try {
-        Glide.with(this)
-            .load(imageUrl)
-            .centerCrop()
-            .format(DecodeFormat.PREFER_RGB_565)
-            .diskCacheStrategy(DiskCacheStrategy.ALL)
-            .priority(com.bumptech.glide.Priority.IMMEDIATE)
-            .override(720, 405)
-            .dontAnimate()
-            .into(card.findViewById(R.id.imgFeaturedBanner))
-    } catch (e: Exception) { e.printStackTrace() }
-        }
+        // Fundo (TMDB, ou o JPEG do painel) e sinopse do TMDB: se já foram resolvidos antes, entram na hora.
+        val chave = "${d.isSeries}|${d.nome}|${d.tmdbId}|${d.imagem}"
+        try {
+            val prefs = getSharedPreferences("vltv_prefs", Context.MODE_PRIVATE)
+            val guardado = prefs.getString(PREF_DESTAQUE_RESOLVIDO, null)?.let { JSONObject(it) }
+            if (guardado != null && guardado.optString("chave") == chave) {
+                aplicarVisualDestaque(card, d, guardado.optString("img"), guardado.optString("sin"))
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+        resolverVisualDestaque(d, card, chave, meuId)
 
-        val jaResolvidoAntes = title == ultimoFeaturedTitleAplicado && featuredBannerEncontrado
-        if (jaResolvidoAntes) {
-            card.visibility = View.VISIBLE
-            return
-        }
-
-        buscarIdFeaturedBanner(card, title, isSeriesRC, contentIdRC)
+        // Acha o título na lista da conta (para abrir os detalhes). Se a conta não tem, o card some.
+        buscarIdFeaturedBanner(card, d.nome, d.isSeries, "")
         if (!ContentRepository.pronto) {
             ContentRepository.aoFicarPronto {
                 if (!isFinishing && !isDestroyed) {
-                    buscarIdFeaturedBanner(card, title, isSeriesRC, contentIdRC)
+                    buscarIdFeaturedBanner(card, d.nome, d.isSeries, "")
                 }
             }
+        }
+    }
+
+    // Fundo do destaque: 1) TMDB (pelo ID, ou pelo nome); 2) JPEG do painel; 3) nada (fica só o card escuro).
+    private fun resolverVisualDestaque(d: DestaqueVps, card: View, chave: String, meuId: Int) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            var backdropUrl: String? = null
+            var overview = ""
+            try {
+                val tipo = if (d.isSeries) "tv" else "movie"
+                if (d.tmdbId.isNotEmpty()) {
+                    val j = JSONObject(fetchUrlComTimeout(
+                        "https://api.themoviedb.org/3/$tipo/${d.tmdbId}?api_key=$TMDB_API_KEY&language=pt-BR"
+                    ))
+                    overview = j.optString("overview", "")
+                    val bp = j.optString("backdrop_path", "")
+                    if (bp.isNotEmpty() && bp != "null") backdropUrl = VpsConfig.tmdbImage(bp, "w780")
+                } else {
+                    val query = URLEncoder.encode(limparNomeParaTMDB(d.nome), "UTF-8")
+                    val results = JSONObject(fetchUrlComTimeout(
+                        "https://api.themoviedb.org/3/search/$tipo?api_key=$TMDB_API_KEY&query=$query&language=pt-BR&region=BR"
+                    )).getJSONArray("results")
+                    val obj = escolherMelhorResultadoTmdb(results, d.nome, d.isSeries)
+                    if (obj != null) {
+                        overview = obj.optString("overview", "")
+                        val bp = obj.optString("backdrop_path", "")
+                        if (bp.isNotEmpty() && bp != "null") backdropUrl = VpsConfig.tmdbImage(bp, "w780")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w("VLTV_Destaque", "TMDB sem resposta para o destaque: ${e.message}")
+            }
+
+            val imagemFinal = backdropUrl ?: urlImagemPropriaDestaque(d.imagem)
+
+            // Guarda para a próxima abertura já mostrar tudo na hora.
+            try {
+                val j = JSONObject().put("chave", chave).put("img", imagemFinal).put("sin", overview)
+                getSharedPreferences("vltv_prefs", Context.MODE_PRIVATE)
+                    .edit().putString(PREF_DESTAQUE_RESOLVIDO, j.toString()).apply()
+            } catch (e: Exception) { /* ignora */ }
+
+            withContext(Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                if (meuId != idDestaque) return@withContext      // o painel mudou nesse meio tempo
+                aplicarVisualDestaque(card, d, imagemFinal, overview)
+            }
+        }
+    }
+
+    private fun aplicarVisualDestaque(card: View, d: DestaqueVps, imagemUrl: String, overview: String) {
+        // Sinopse: a digitada no painel; se vazia, a do TMDB.
+        val sinopseFinal = if (d.sinopse.isNotBlank()) d.sinopse else overview
+        val tvSynopsis = card.findViewById<TextView>(R.id.tvFeaturedSynopsis)
+        if (sinopseFinal.isNotBlank()) {
+            tvSynopsis.text = sinopseFinal
+            tvSynopsis.visibility = View.VISIBLE
+        } else {
+            tvSynopsis.visibility = View.GONE
+        }
+
+        if (imagemUrl.isNotBlank()) {
+            try {
+                Glide.with(this)
+                    .load(imagemUrl)
+                    .centerCrop()
+                    .format(DecodeFormat.PREFER_RGB_565)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .priority(com.bumptech.glide.Priority.IMMEDIATE)
+                    .override(720, 405)
+                    .dontAnimate()
+                    .into(card.findViewById(R.id.imgFeaturedBanner))
+            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 
