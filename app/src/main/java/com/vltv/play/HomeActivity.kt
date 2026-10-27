@@ -217,9 +217,10 @@ class HomeActivity : AppCompatActivity() {
 
         // ✅ Destaque da semana vem da VPS (aba "Destaque da semana" do painel admin, a MESMA das TVs LG/Samsung).
         // Rota pública /lg/config: devolve destaque_ativo, destaque_tipo, destaque_nome, destaque_sinopse,
-        // destaque_tmdb e destaque_imagem. No máximo 1 consulta a cada 40 s por abertura da Home.
+        // destaque_tmdb e destaque_imagem. Com a Home aberta, consulta a cada ~15 s.
         @Volatile private var ultimoFetchDestaqueMs = 0L
-        private const val INTERVALO_MINIMO_DESTAQUE_MS = 40_000L
+        private const val INTERVALO_MINIMO_DESTAQUE_MS = 12_000L
+        private const val INTERVALO_VIGIA_DESTAQUE_MS = 15_000L
         private const val URL_BASE_VPS = "https://api.vltvplay.tech"
         private const val PREF_DESTAQUE_JSON = "destaque_vps_json"
         private const val PREF_DESTAQUE_RESOLVIDO = "destaque_vps_resolvido"
@@ -2330,6 +2331,24 @@ class HomeActivity : AppCompatActivity() {
     )
 
     private var destaqueAplicado: DestaqueVps? = null
+    private var vigiaDestaqueJob: kotlinx.coroutines.Job? = null
+
+    // Enquanto a Home está na tela, confere a VPS a cada ~15 s: mudou no painel, muda no app.
+    private fun iniciarVigiaDestaque() {
+        vigiaDestaqueJob?.cancel()
+        vigiaDestaqueJob = lifecycleScope.launch(Dispatchers.Main) {
+            while (true) {
+                delay(INTERVALO_VIGIA_DESTAQUE_MS)
+                if (isFinishing || isDestroyed) break
+                atualizarDestaqueDaVps()
+            }
+        }
+    }
+
+    private fun pararVigiaDestaque() {
+        vigiaDestaqueJob?.cancel()
+        vigiaDestaqueJob = null
+    }
     private var idDestaque = 0
 
     private fun destaqueDoJson(j: JSONObject): DestaqueVps {
@@ -2359,7 +2378,7 @@ class HomeActivity : AppCompatActivity() {
             prefs.getString(PREF_DESTAQUE_JSON, null)?.let { aplicarDestaqueVps(destaqueDoJson(JSONObject(it))) }
         } catch (e: Exception) { e.printStackTrace() }
 
-        // 2) Pergunta à VPS (no máximo 1 vez a cada 40 s). Sem resposta: fica o último destaque guardado.
+        // 2) Pergunta à VPS (no máximo 1 vez a cada 12 s). Sem resposta: fica o último destaque guardado.
         val agora = System.currentTimeMillis()
         if (agora - ultimoFetchDestaqueMs < INTERVALO_MINIMO_DESTAQUE_MS) return
         ultimoFetchDestaqueMs = agora
@@ -2664,6 +2683,7 @@ class HomeActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         atualizarConfigSelos()
+        iniciarVigiaDestaque()
         try {
             lifecycleScope.launch(Dispatchers.Main) {
                 delay(400)
@@ -2697,6 +2717,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        pararVigiaDestaque()
         super.onPause()
         bannerHandler.removeCallbacksAndMessages(null)
         gameRotationHandler.removeCallbacksAndMessages(null)
