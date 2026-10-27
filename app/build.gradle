@@ -20,8 +20,8 @@ android {
         applicationId = "com.vltv.play"
         minSdk = 23
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.5.2"
+        versionCode = 10
+        versionName = "1.5.3"
 
         multiDexEnabled = true
 
@@ -218,4 +218,16 @@ dependencies {
 
     implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("com.google.android.flexbox:flexbox:3.0.0")
-}
+}ayer-hls:$media3_version")
+    implementation("androidx.media3:media3-common:$media3_version")
+
+    // YouTube Player (Trailer)
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:12.1.0")
+
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+
+    // ❌ REMOVIDO: Cast Framework (com.google.android.gms:play-services-cast-framework)
+    // Removido porque a inicialização do CastContext fazia o ícone de
+    // cast/compartilh
