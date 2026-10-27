@@ -25,13 +25,12 @@ android {
 
         multiDexEnabled = true
 
-        // ✅ NOVO: chave da TMDB agora vem do Secret TMDB_API_KEY do GitHub
-        // Actions (via variável de ambiente), em vez de ficar fixa no
-        // código-fonte. O valor depois de "?:" é só um fallback pra build
-        // local continuar funcionando caso a variável de ambiente não
-        // esteja definida (ex: build feito direto no computador, fora do
-        // Actions) — troque-o pela sua chave se for compilar localmente.
-        buildConfigField "String", "TMDB_API_KEY", "\"${System.getenv("TMDB_API_KEY") ?: "9b73f5dd15b8165b1b57419be2f29128"}\""
+        // ✅ ATUALIZADO: a chave da TMDB vem SÓ do Secret TMDB_API_KEY do
+        // GitHub Actions (variável de ambiente). O fallback deixou de ser
+        // uma chave real: sem a variável definida (ex: build local), a
+        // chave fica vazia e as buscas no TMDB simplesmente não retornam
+        // nada — o app não quebra. Nunca escreva a chave aqui no código.
+        buildConfigField "String", "TMDB_API_KEY", "\"${System.getenv("TMDB_API_KEY") ?: ""}\""
     }
 
     lint {
@@ -230,4 +229,5 @@ dependencies {
 
     // ❌ REMOVIDO: Cast Framework (com.google.android.gms:play-services-cast-framework)
     // Removido porque a inicialização do CastContext fazia o ícone de
-    // cast/compartilh
+    // cast/compartilhamento de tela aparecer permanentemente no status bar
+    // do Android, mesmo sem nenhum Chromecast con
