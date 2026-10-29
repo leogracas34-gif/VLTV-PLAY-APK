@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botão grande da Home da TV (estilo LG): degradê + borda branca quando em foco -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <gradient android:angle="315" android:startColor="#E0185A" android:centerColor="#6A1D86" android:endColor="#221840"/>
+            <corners android:radius="14dp"/>
+            <stroke android:width="3dp" android:color="#FFFFFF"/>
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="315" android:startColor="#B8123F" android:centerColor="#4A1560" android:endColor="#14122A"/>
+            <corners android:radius="14dp"/>
+            <stroke android:width="2dp" android:color="#73FF4B55"/>
+        </shape>
+    </item>
+</selector>
