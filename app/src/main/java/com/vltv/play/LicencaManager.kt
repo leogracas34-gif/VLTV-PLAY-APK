@@ -268,6 +268,82 @@ object LicencaManager {
         }
     }
 
+    // ── Resumo para a tela de Configurações e para o aviso da Home ───────────
+    data class Resumo(
+        val titulo: String,       // "Teste grátis", "Licença ativa"...
+        val detalhe: String,      // "7 dias restantes • até 05/11/2026"
+        val badge: String,        // "TESTE", "ATIVA"... ("" = sem selo)
+        val corHex: String,       // cor do selo/título
+        val codigo: String,       // código do aplicativo (vazio = ainda não veio da VPS)
+        val ajuda: String         // frase curta embaixo do código
+    )
+
+    /** Site onde o cliente informa o código (o mesmo texto da tela de ativação). */
+    fun siteAtivacao(ctx: Context): String =
+        estadoSalvo(ctx)?.pagarUrl?.takeIf { it.isNotBlank() } ?: "vltvplay.tech/ativar"
+
+    private fun diasAte(seg: Long): Int =
+        Math.ceil((seg * 1000.0 - System.currentTimeMillis()) / 86400000.0).toInt()
+
+    fun resumo(ctx: Context): Resumo {
+        val e = estadoSalvo(ctx)
+        val codigo = e?.codigo.orEmpty()
+        val site = siteAtivacao(ctx)
+        val ajudaAtivar = "Para ativar, acesse $site no celular ou computador e informe este código."
+        val verde = "#5BE3A4"; val ambar = "#FFB020"; val vermelho = "#FF6B6B"
+        if (ehParceiro(ctx)) {
+            return Resumo("Conta de parceiro", "Licença do aplicativo sempre ativa", "PARCEIRO", verde, codigo,
+                "Se precisar de suporte, informe este código.")
+        }
+        if (e == null) {
+            return Resumo("Verificando licença...", "", "", ambar, codigo, "Conecte à internet para ver o código do aplicativo.")
+        }
+        return when (e.estado) {
+            "active" ->
+                if (e.vitalicio) Resumo("Licença vitalícia", "Sem vencimento", "VITALÍCIA", verde, codigo,
+                    "Se precisar de suporte, informe este código.")
+                else Resumo("Licença ativa", "Válida até " + dataBr(e.expiraEm), "ATIVA", verde, codigo,
+                    "Para renovar, acesse $site e informe este código.")
+            "trial" -> {
+                val d = if (e.expiraEm > 0) diasAte(e.expiraEm).coerceAtLeast(0) else e.dias
+                Resumo("Teste grátis",
+                    "$d " + (if (d == 1) "dia restante" else "dias restantes") + " • até " + dataBr(e.expiraEm),
+                    "TESTE", ambar, codigo, ajudaAtivar)
+            }
+            "expired" -> Resumo("Licença vencida", "Ative para continuar usando", "VENCIDA", vermelho, codigo, ajudaAtivar)
+            "blocked" -> Resumo("Aparelho bloqueado", "Fale com o suporte", "BLOQUEADO", vermelho, codigo,
+                "Informe este código ao suporte.")
+            else -> Resumo("Licença não verificada", "Sem resposta do servidor", "", ambar, codigo,
+                "Conecte à internet e abra de novo.")
+        }
+    }
+
+    /**
+     * Texto CURTO para a pílula da Home (o aviso mais urgente). Os avisos completos
+     * continuam em avisos(). Devolve null quando não há nada para avisar.
+     */
+    fun avisoCurto(ctx: Context, diasPlano: Long?): String? {
+        data class Item(val dias: Long, val texto: String)
+        val itens = mutableListOf<Item>()
+        fun quando(d: Long) = when (d) { 0L -> "hoje"; 1L -> "amanhã"; else -> "em $d dias" }
+
+        val e = estadoSalvo(ctx)
+        if (e != null && !ehParceiro(ctx) && !e.vitalicio && e.expiraEm > 0 &&
+            (e.estado == "trial" || e.estado == "active")) {
+            val d = diasAte(e.expiraEm).toLong()
+            if (d in 0..AVISO_VENCIMENTO_DIAS.toLong()) {
+                itens.add(Item(d, if (e.estado == "trial") "Teste termina ${quando(d)}" else "Licença vence ${quando(d)}"))
+            }
+        }
+        if (diasPlano != null) {
+            if (diasPlano < 0) itens.add(Item(-1, "Plano vencido"))
+            else if (diasPlano <= AVISO_VENCIMENTO_DIAS) itens.add(Item(diasPlano, "Plano vence ${quando(diasPlano)}"))
+        }
+        if (itens.isEmpty()) return null
+        val primeiro = itens.minByOrNull { it.dias }!!
+        return if (itens.size > 1) primeiro.texto + "  (+${itens.size - 1})" else primeiro.texto
+    }
+
     /**
      * Avisos da Home: licença do app (teste acabando ou licença vencendo) e plano
      * de canais/filmes/séries (lista vencendo). diasPlano = null quando não vale
