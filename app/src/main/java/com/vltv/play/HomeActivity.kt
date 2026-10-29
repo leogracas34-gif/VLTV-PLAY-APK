@@ -41,6 +41,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.vltv.play.databinding.ActivityHomeBinding
@@ -489,6 +490,44 @@ class HomeActivity : AppCompatActivity() {
         if (isFinishing || isDestroyed) return
         bannerItemAtual = item
         bannerAdapter.updateItem(item)
+        preCarregarProximoBanner()
+    }
+
+    // Fluidez (como a LG, que prepara o próximo slide antes de trocar): resolve o backdrop/logo do PRÓXIMO
+    // título em segundo plano e já deixa as imagens no cache do Glide. Quando o carrossel avança, a troca é instantânea.
+    private var bannerPreloadJob: kotlinx.coroutines.Job? = null
+    private fun preCarregarProximoBanner() {
+        if (bannerFila.size < 2) return
+        val prox = bannerFila[(bannerFilaIndex + 1) % bannerFila.size]
+        var title = ""; var id = 0; var isSeries = false
+        var logoSalva: String? = null; var tmdbIdSalvo: Int? = null; var backdropPathSalvo: String? = null
+        when (prox) {
+            is VodEntity -> { title = prox.name; id = prox.stream_id; isSeries = false
+                logoSalva = prox.logo_url; tmdbIdSalvo = prox.tmdb_id; backdropPathSalvo = prox.backdrop_path }
+            is SeriesEntity -> { title = prox.name; id = prox.series_id; isSeries = true
+                logoSalva = prox.logo_url; tmdbIdSalvo = prox.tmdb_id; backdropPathSalvo = prox.backdrop_path }
+            else -> return
+        }
+        val chave = "${if (isSeries) "tv" else "movie"}_$id"
+        val clean = limparNomeExibicao(title)
+        bannerPreloadJob?.cancel()
+        bannerPreloadJob = lifecycleScope.launch(Dispatchers.IO) {
+            val assets = bannerAssetsCache[chave]
+                ?: buscarAssetsBanner(title, clean, isSeries, id, logoSalva, tmdbIdSalvo, backdropPathSalvo)
+                    .also { bannerAssetsCache[chave] = it }
+            withContext(Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                try {
+                    assets.backdropUrl?.takeIf { it.isNotBlank() }?.let {
+                        Glide.with(this@HomeActivity).load(it).format(DecodeFormat.PREFER_RGB_565)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL).preload()
+                    }
+                    assets.logoUrl?.takeIf { it.isNotBlank() }?.let {
+                        Glide.with(this@HomeActivity).load(it).diskCacheStrategy(DiskCacheStrategy.ALL).preload()
+                    }
+                } catch (e: Exception) {}
+            }
+        }
     }
 
     private fun construirFilaBannerEIniciar() {
@@ -1548,6 +1587,9 @@ class HomeActivity : AppCompatActivity() {
         bannerAdapter = BannerAdapter(null)
         binding.bannerViewPager?.adapter = bannerAdapter
         binding.bannerViewPager?.isUserInputEnabled = false
+        // Fluidez (como na LG): a troca de slide é feita por nós com crossfade; o animador padrão do
+        // RecyclerView criava uma view nova e vazia a cada troca, o que dava o "piscar" do banner.
+        (binding.bannerViewPager?.getChildAt(0) as? RecyclerView)?.itemAnimator = null
     }
 
     private fun setupBottomNavigation() {
@@ -1719,16 +1761,22 @@ class HomeActivity : AppCompatActivity() {
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .error(R.drawable.bg_logo_placeholder)
 
+            // Crossfade a partir da imagem que já está no banner (em vez de cinza -> imagem, que piscava).
+            val atual = imgBanner.drawable
             Glide.with(this@HomeActivity)
                 .load(backdropUrl.takeIf { it.isNotBlank() })
                 .centerCrop()
                 .format(DecodeFormat.PREFER_RGB_565)
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .placeholder(R.drawable.bg_logo_placeholder)
+                .let { if (atual != null) it.placeholder(atual) else it.placeholder(R.drawable.bg_logo_placeholder) }
                 .error(fallbackRequest)
-                .dontAnimate()
+                .transition(DrawableTransitionOptions.withCrossFade(380))
                 .into(imgBanner)
         } catch (e: Exception) {}
+
+        // Texto/logo entram suavemente (fade), como o texto do banner da LG.
+        tvTitle.alpha = 0f
+        imgLogo.alpha = 0f
 
         if (!logoUrl.isNullOrEmpty()) {
             tvTitle.visibility = View.GONE
@@ -1740,11 +1788,77 @@ class HomeActivity : AppCompatActivity() {
                     .dontAnimate()
                     .into(imgLogo)
             } catch (e: Exception) {}
+            imgLogo.animate().alpha(1f).setDuration(350).start()
         } else {
             imgLogo.visibility = View.GONE
             tvTitle.visibility = View.VISIBLE
             tvTitle.text = cleanTitle
+            tvTitle.animate().alpha(1f).setDuration(350).start()
         }
+    }
+
+    // Busca (TMDB/VPS) o backdrop e o logo de um título. Usada pelo banner atual e pelo pré-carregamento do próximo.
+    private suspend fun buscarAssetsBanner(
+        titulo: String,
+        cleanTitle: String,
+        isSeries: Boolean,
+        id: Int,
+        logoSalvoNoBanco: String?,
+        tmdbIdSalvo: Int?,
+        backdropPathSalvo: String?
+    ): BannerAssets {
+        var backdropUrl: String? = null
+        var logoUrl: String? = logoSalvoNoBanco?.takeIf { it.isNotEmpty() }
+        val tipo = if (isSeries) "tv" else "movie"
+
+        try {
+            val temResolucaoConfiavel = tmdbIdSalvo != null && !backdropPathSalvo.isNullOrEmpty()
+
+            if (temResolucaoConfiavel) {
+                backdropUrl = VpsConfig.tmdbImage(backdropPathSalvo!!, "original")
+                if (logoUrl == null) {
+                    logoUrl = buscarMelhorLogoTmdb(tmdbIdSalvo.toString(), tipo, "")
+                    if (logoUrl != null) {
+                        try {
+                            if (isSeries) database.streamDao().updateSeriesTmdbAssets(id, tmdbIdSalvo, backdropPathSalvo, logoUrl)
+                            else database.streamDao().updateVodTmdbAssets(id, tmdbIdSalvo, backdropPathSalvo, logoUrl)
+                        } catch (e: Exception) {}
+                    }
+                }
+            } else {
+                val nomeLimpo = limparNomeParaTMDB(titulo)
+                val query = URLEncoder.encode(nomeLimpo, "UTF-8")
+                val url = "https://api.themoviedb.org/3/search/$tipo?api_key=$TMDB_API_KEY&query=$query&language=pt-BR&region=BR"
+                val response = fetchUrlComTimeout(url)
+                val results = JSONObject(response).getJSONArray("results")
+
+                if (results.length() > 0) {
+                    val obj = escolherMelhorResultadoTmdb(results, titulo, isSeries)
+
+                    if (obj != null) {
+                        val backdropPath = obj.optString("backdrop_path")
+                        val tmdbIdStr = obj.optString("id")
+                        val tmdbIdInt = tmdbIdStr.toIntOrNull()
+                        val originalLanguage = obj.optString("original_language", "")
+
+                        val backdropValido = backdropPath.isNotEmpty() && backdropPath != "null"
+                        if (backdropValido) {
+                            backdropUrl = VpsConfig.tmdbImage(backdropPath, "original")
+                        }
+
+                        logoUrl = buscarMelhorLogoTmdb(tmdbIdStr, tipo, originalLanguage)
+
+                        if (tmdbIdInt != null && backdropValido) {
+                            try {
+                                if (isSeries) database.streamDao().updateSeriesTmdbAssets(id, tmdbIdInt, backdropPath, logoUrl)
+                                else database.streamDao().updateVodTmdbAssets(id, tmdbIdInt, backdropPath, logoUrl)
+                            } catch (e: Exception) {}
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {}
+        return BannerAssets(backdropUrl, logoUrl, cleanTitle)
     }
 
     private fun resolverEAplicarBannerCompleto(
@@ -1764,57 +1878,10 @@ class HomeActivity : AppCompatActivity() {
     ) {
         bannerBuscaJob?.cancel()
         bannerBuscaJob = lifecycleScope.launch(Dispatchers.IO) {
-            var backdropUrl: String? = null
-            var logoUrl: String? = logoSalvoNoBanco?.takeIf { it.isNotEmpty() }
-            val tipo = if (isSeries) "tv" else "movie"
-
-            try {
-                val temResolucaoConfiavel = tmdbIdSalvo != null && !backdropPathSalvo.isNullOrEmpty()
-
-                if (temResolucaoConfiavel) {
-                    backdropUrl = VpsConfig.tmdbImage(backdropPathSalvo!!, "original")
-                    if (logoUrl == null) {
-                        logoUrl = buscarMelhorLogoTmdb(tmdbIdSalvo.toString(), tipo, "")
-                        if (logoUrl != null) {
-                            try {
-                                if (isSeries) database.streamDao().updateSeriesTmdbAssets(id, tmdbIdSalvo, backdropPathSalvo, logoUrl)
-                                else database.streamDao().updateVodTmdbAssets(id, tmdbIdSalvo, backdropPathSalvo, logoUrl)
-                            } catch (e: Exception) {}
-                        }
-                    }
-                } else {
-                    val nomeLimpo = limparNomeParaTMDB(titulo)
-                    val query = URLEncoder.encode(nomeLimpo, "UTF-8")
-                    val url = "https://api.themoviedb.org/3/search/$tipo?api_key=$TMDB_API_KEY&query=$query&language=pt-BR&region=BR"
-                    val response = fetchUrlComTimeout(url)
-                    val results = JSONObject(response).getJSONArray("results")
-
-                    if (results.length() > 0) {
-                        val obj = escolherMelhorResultadoTmdb(results, titulo, isSeries)
-
-                        if (obj != null) {
-                            val backdropPath = obj.optString("backdrop_path")
-                            val tmdbIdStr = obj.optString("id")
-                            val tmdbIdInt = tmdbIdStr.toIntOrNull()
-                            val originalLanguage = obj.optString("original_language", "")
-
-                            val backdropValido = backdropPath.isNotEmpty() && backdropPath != "null"
-                            if (backdropValido) {
-                                backdropUrl = VpsConfig.tmdbImage(backdropPath, "original")
-                            }
-
-                            logoUrl = buscarMelhorLogoTmdb(tmdbIdStr, tipo, originalLanguage)
-
-                            if (tmdbIdInt != null && backdropValido) {
-                                try {
-                                    if (isSeries) database.streamDao().updateSeriesTmdbAssets(id, tmdbIdInt, backdropPath, logoUrl)
-                                    else database.streamDao().updateVodTmdbAssets(id, tmdbIdInt, backdropPath, logoUrl)
-                                } catch (e: Exception) {}
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {}
+            val assets = bannerAssetsCache[chaveCache]
+                ?: buscarAssetsBanner(titulo, cleanTitle, isSeries, id, logoSalvoNoBanco, tmdbIdSalvo, backdropPathSalvo)
+            val backdropUrl = assets.backdropUrl
+            val logoUrl = assets.logoUrl
 
             val backdropFinal = backdropUrl ?: ""
 
@@ -3107,7 +3174,12 @@ class HomeActivity : AppCompatActivity() {
                     return
                 }
 
-                aplicarBannerCompleto(imgBanner, imgLogo, tvTitle, icon, icon, null, cleanTitle)
+                // Já tem um banner na tela? Então NÃO mostra a capa vertical esticada como fundo (era o piscar):
+                // mantém a imagem atual até o backdrop novo estar pronto e troca tudo junto, com crossfade.
+                // Só o primeiríssimo banner (tela ainda vazia) usa a capa enquanto o backdrop não chega.
+                if (imgBanner.drawable == null) {
+                    aplicarBannerCompleto(imgBanner, imgLogo, tvTitle, icon, icon, null, cleanTitle)
+                }
 
                 resolverEAplicarBannerCompleto(
                     titulo = title, cleanTitle = cleanTitle, isSeries = isSeries, id = id,

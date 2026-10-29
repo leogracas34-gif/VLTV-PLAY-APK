@@ -1449,20 +1449,48 @@ class SettingsActivity : AppCompatActivity() {
         })
     }
 
-    // ✅ NOVO: linha "Licença do aplicativo" (igual à LG): mostra se o app está em
-    // TESTE grátis (com os dias que faltam), com licença ANUAL (data de vencimento)
-    // ou VITALÍCIA. Mostra o que está guardado e confere com a VPS por trás.
+    // ✅ Cartão "Licença do aplicativo" (igual à LG): status (teste grátis / ativa / vitalícia),
+    // dias restantes e o CÓDIGO DO APLICATIVO para o cliente ativar no site. Mostra o que está
+    // guardado na hora e confere com a VPS por trás (o código aparece assim que ela responde).
     private fun configurarLinhaLicenca() {
-        val tv = findViewById<TextView>(R.id.tvLicencaApp) ?: return
+        val tvStatus  = findViewById<TextView>(R.id.tvLicStatus) ?: return
+        val tvDetalhe = findViewById<TextView>(R.id.tvLicDetalhe)
+        val tvBadge   = findViewById<TextView>(R.id.tvLicBadge)
+        val tvCodigo  = findViewById<TextView>(R.id.tvLicCodigo)
+        val btnCopiar = findViewById<TextView>(R.id.btnLicCopiar)
+        val tvAjuda   = findViewById<TextView>(R.id.tvLicAjuda)
+
         fun atualizar() {
-            val texto = LicencaManager.textoCurto(this)
-            if (texto.isBlank()) { tv.visibility = View.GONE; return }
-            tv.text = "Licença do aplicativo: $texto"
-            tv.setTextColor(Color.parseColor(
-                if (LicencaManager.estadoSalvo(this)?.estado == "active" || LicencaManager.ehParceiro(this)) "#5BE3A4" else "#FFB020"
-            ))
-            tv.visibility = View.VISIBLE
+            val r = LicencaManager.resumo(this)
+            val cor = Color.parseColor(r.corHex)
+            tvStatus.text = r.titulo
+            if (r.detalhe.isBlank()) tvDetalhe?.visibility = View.GONE
+            else { tvDetalhe?.text = r.detalhe; tvDetalhe?.visibility = View.VISIBLE }
+            if (r.badge.isBlank()) tvBadge?.visibility = View.GONE
+            else {
+                tvBadge?.text = r.badge
+                tvBadge?.background?.mutate()
+                tvBadge?.backgroundTintList = android.content.res.ColorStateList.valueOf(cor)
+                tvBadge?.visibility = View.VISIBLE
+            }
+            tvCodigo?.text = r.codigo.ifBlank { "--------" }
+            if (r.ajuda.isBlank()) tvAjuda?.visibility = View.GONE
+            else { tvAjuda?.text = r.ajuda; tvAjuda?.visibility = View.VISIBLE }
         }
+
+        val copiar = View.OnClickListener {
+            val cod = LicencaManager.resumo(this).codigo
+            if (cod.isBlank()) {
+                Toast.makeText(this, "O código ainda não chegou. Verifique a internet.", Toast.LENGTH_SHORT).show()
+            } else {
+                val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                cm?.setPrimaryClip(android.content.ClipData.newPlainText("codigo", cod))
+                Toast.makeText(this, "Código copiado", Toast.LENGTH_SHORT).show()
+            }
+        }
+        btnCopiar?.setOnClickListener(copiar)
+        tvCodigo?.setOnClickListener(copiar)
+
         atualizar()
         lifecycleScope.launch {
             LicencaManager.verificar(this@SettingsActivity)

@@ -1,13 +1,19 @@
 package com.vltv.play
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.lifecycleScope
@@ -28,9 +34,10 @@ import retrofit2.Response
  *    séries) está vencendo, com o limite de 7 dias da LG.
  *
  * ✅ DECISÃO DE ARQUITETURA: fica num arquivo próprio para a HomeActivity (3 mil
- * linhas) só ganhar UMA chamada em onResume. A faixa é criada por código e
- * encaixada logo abaixo do cabeçalho, sem mexer no layout existente.
- * Toque na faixa para dispensá-la até a próxima abertura da Home.
+ * linhas) só ganhar UMA chamada em onResume. O aviso é uma pílula pequena criada
+ * por código DENTRO do cabeçalho (ao lado do botão de Downloads), sem cobrir a
+ * imagem do banner e sem mexer no layout existente. Toque nela para ver todos os
+ * avisos e o código do aplicativo (como a LG mostra no canto da Home).
  */
 object LicencaHomeHelper {
 
@@ -100,48 +107,84 @@ object LicencaHomeHelper {
         }
     }
 
+    // Pílula discreta no cabeçalho (ao lado do botão de Downloads), em vez de uma faixa sobre a imagem.
+    // Mostra só o aviso mais urgente; tocando nela abre um quadro com todos os avisos e o código do app.
     private fun mostrarFaixa(activity: AppCompatActivity, root: View, headerId: Int) {
         if (activity.isFinishing || activity.isDestroyed) return
         val layout = root as? ConstraintLayout ?: return
-        val avisos = LicencaManager.avisos(activity, diasDoPlano(activity))
+        val curto = LicencaManager.avisoCurto(activity, diasDoPlano(activity))
 
-        var faixa = layout.findViewWithTag<TextView>(TAG_FAIXA)
-        if (avisos.isEmpty()) { faixa?.visibility = View.GONE; return }
+        var pilula = layout.findViewWithTag<TextView>(TAG_FAIXA)
+        if (curto == null) { pilula?.visibility = View.GONE; return }
 
-        if (faixa == null) {
-            val dp = activity.resources.displayMetrics.density
-            faixa = TextView(activity).apply {
+        val dp = activity.resources.displayMetrics.density
+        if (pilula == null) {
+            val ponto = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#FFB020"))
+                setSize((6 * dp).toInt(), (6 * dp).toInt())
+            }
+            pilula = TextView(activity).apply {
                 tag = TAG_FAIXA
                 id = View.generateViewId()
-                gravity = Gravity.CENTER
+                gravity = Gravity.CENTER_VERTICAL
                 setTextColor(Color.parseColor("#FFB020"))
-                textSize = 12.5f
-                setPadding((14 * dp).toInt(), (7 * dp).toInt(), (14 * dp).toInt(), (7 * dp).toInt())
+                textSize = 11.5f
+                typeface = Typeface.DEFAULT_BOLD
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                maxWidth = (190 * dp).toInt()
+                compoundDrawablePadding = (6 * dp).toInt()
+                setCompoundDrawablesWithIntrinsicBounds(ponto, null, null, null)
+                setPadding((10 * dp).toInt(), (5 * dp).toInt(), (12 * dp).toInt(), (5 * dp).toInt())
                 background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#E6141416"))
-                    setStroke((1 * dp).toInt(), Color.parseColor("#66FFB020"))
-                    cornerRadius = 10 * dp
+                    setColor(Color.parseColor("#26FFB020"))
+                    setStroke((1 * dp).toInt(), Color.parseColor("#4DFFB020"))
+                    cornerRadius = 14 * dp
                 }
-                elevation = 20 * dp
+                // O cabeçalho tem elevação 20 + translationZ 20; a pílula precisa ficar acima dele, sem sombra.
+                z = 50 * dp
+                outlineProvider = null
                 isClickable = true
-                setOnClickListener { visibility = View.GONE }   // dispensa até a próxima vez
+                isFocusable = true
+                setOnClickListener { abrirQuadro(activity) }
                 layoutParams = ConstraintLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    topToBottom = headerId
-                    startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+                    topToTop = headerId
+                    bottomToBottom = headerId
                     endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-                    topMargin = (6 * dp).toInt()
-                    marginStart = (16 * dp).toInt()
-                    marginEnd = (16 * dp).toInt()
+                    // 18dp de margem do cabeçalho + 40dp do botão de Downloads + 10dp de respiro
+                    marginEnd = (68 * dp).toInt()
                 }
             }
-            layout.addView(faixa)
+            layout.addView(pilula)
         }
-        val novoTexto = avisos.joinToString("  •  ")
-        if (faixa.text.toString() != novoTexto) {
-            faixa.text = novoTexto
-            faixa.visibility = View.VISIBLE   // texto novo reaparece mesmo se dispensada
+        pilula.text = curto
+        pilula.visibility = View.VISIBLE
+    }
+
+    private fun abrirQuadro(activity: AppCompatActivity) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        val avisos = LicencaManager.avisos(activity, diasDoPlano(activity))
+        val resumo = LicencaManager.resumo(activity)
+        val msg = StringBuilder()
+        avisos.forEach { msg.append("• ").append(it).append("\n\n") }
+        if (resumo.codigo.isNotBlank()) {
+            msg.append("Código do aplicativo: ").append(resumo.codigo).append("\n")
+            msg.append(resumo.ajuda)
         }
+        val b = AlertDialog.Builder(activity)
+            .setTitle("Avisos")
+            .setMessage(msg.toString().trim())
+            .setNegativeButton("Fechar", null)
+        if (resumo.codigo.isNotBlank()) {
+            b.setPositiveButton("Copiar código") { _, _ ->
+                val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                cm?.setPrimaryClip(ClipData.newPlainText("codigo", resumo.codigo))
+                Toast.makeText(activity, "Código copiado", Toast.LENGTH_SHORT).show()
+            }
+        }
+        b.show()
     }
 }
