@@ -50,7 +50,7 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:background="@drawable/bg_gradient_details"/>
+                        android:background="@drawable/bg_gradient_lg_details"/>
 
                     <ProgressBar
                         android:id="@+id/trailerLoadingSpinner"
@@ -92,7 +92,7 @@
                     <LinearLayout
                         android:layout_width="720dp"
                         android:layout_height="wrap_content"
-                        android:layout_gravity="center_horizontal"
+                        android:layout_gravity="start"
                         android:orientation="vertical">
 
                         <ImageView
@@ -174,7 +174,7 @@
                         <FrameLayout
                             android:layout_width="420dp"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center_horizontal"
+                            android:layout_gravity="start"
                             android:layout_marginTop="20dp">
 
                             <Button
@@ -207,7 +207,7 @@
                             android:id="@+id/layoutProgress"
                             android:layout_width="420dp"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center_horizontal"
+                            android:layout_gravity="start"
                             android:orientation="vertical"
                             android:visibility="gone"
                             android:layout_marginTop="12dp">
@@ -244,7 +244,7 @@
                                 android:orientation="horizontal"
                                 android:gravity="center"
                                 android:layout_marginTop="8dp"
-                                android:layout_gravity="center_horizontal"
+                                android:layout_gravity="start"
                                 android:padding="8dp"
                                 android:clickable="true"
                                 android:focusable="true"
@@ -269,7 +269,7 @@
                         <LinearLayout
                             android:layout_width="420dp"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center_horizontal"
+                            android:layout_gravity="start"
                             android:orientation="horizontal"
                             android:layout_marginTop="16dp"
                             android:gravity="center">
@@ -340,7 +340,7 @@
                             android:lineSpacingExtra="3dp"
                             android:textColor="#DDDDDD"
                             android:textSize="14sp"
-                            android:gravity="center"
+                            android:gravity="start"
                             android:visibility="gone" />
 
                     </LinearLayout>
@@ -351,7 +351,7 @@
                 android:id="@+id/tabLayout"
                 android:layout_width="720dp"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
+                android:layout_gravity="start"
                 android:background="#0A0A0A"
                 app:tabIndicatorColor="#FFFFFF"
                 app:tabSelectedTextColor="#FFFFFF"
@@ -375,7 +375,7 @@
                     android:id="@+id/seasonHeaderContainer"
                     android:layout_width="720dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
+                    android:layout_gravity="start"
                     android:paddingVertical="14dp">
 
                     <androidx.cardview.widget.CardView
@@ -435,14 +435,14 @@
                     android:id="@+id/recyclerEpisodes"
                     android:layout_width="720dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
+                    android:layout_gravity="start"
                     android:nestedScrollingEnabled="false" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerSuggestions"
                     android:layout_width="720dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
+                    android:layout_gravity="start"
                     android:visibility="gone"
                     android:nestedScrollingEnabled="false" />
 
@@ -450,14 +450,14 @@
                     android:id="@+id/tvCast"
                     android:layout_width="720dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
+                    android:layout_gravity="start"
                     android:visibility="gone" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/recyclerCast"
                     android:layout_width="720dp"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
+                    android:layout_gravity="start"
                     android:visibility="gone"
                     android:nestedScrollingEnabled="false" />
 
