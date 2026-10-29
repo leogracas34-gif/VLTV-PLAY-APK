@@ -6,7 +6,7 @@
      com o MESMO id de antes (conferido em HomeActivity.kt e
      HomeRowAdapter.kt antes de mexer): headerLayout, tvHeaderTitle,
      ivLogo, bannerViewPager, cardLiveTv, cardMovies, cardSeries,
-     cardDownloads, cardFeaturedBanner + seus filhos, cardRetroGames,
+     cardDownloads, cardFeaturedBanner + seus filhos,
      cardGameBanner + seus filhos, layoutContinueHeader,
      rvContinueWatching, rvTop10Movies, rvRecentlyAdded, rvTop10Series,
      rvRecentSeries, rvNovidades, bottomNavigation. Nada disso foi
@@ -267,26 +267,6 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="#F5F3EF" android:textSize="10.5sp" android:textStyle="bold" android:letterSpacing="0.02" android:layout_marginTop="4dp"/>
                 </LinearLayout>
 
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="28dp"
-                    android:layout_gravity="center_vertical"
-                    android:background="@drawable/divider_quick_action"/>
-
-                <LinearLayout
-                    android:id="@+id/cardRetroGames"
-                    android:layout_width="0dp"
-                    android:layout_height="72dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:visibility="gone"
-                    android:foreground="?attr/selectableItemBackground">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎮" android:textSize="20sp"/>
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Jogos" android:textColor="#F5F3EF" android:textSize="10.5sp" android:textStyle="bold" android:letterSpacing="0.02" android:layout_marginTop="4dp"/>
-                </LinearLayout>
 
             </LinearLayout>
 

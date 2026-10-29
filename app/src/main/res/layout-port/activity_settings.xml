@@ -148,6 +148,16 @@
                             android:text="Sincronizando com o servidor..."
                             android:textColor="#888888"
                             android:textSize="12sp"/>
+                        <!-- ✅ NOVO: licença do APLICATIVO (igual à LG): Teste grátis / Ativa até / Vitalícia -->
+                        <TextView
+                            android:id="@+id/tvLicencaApp"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text=""
+                            android:textColor="#FFB020"
+                            android:textSize="13sp"
+                            android:visibility="gone"/>
 
                     </LinearLayout>
 

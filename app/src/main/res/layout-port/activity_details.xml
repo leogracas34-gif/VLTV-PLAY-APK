@@ -29,7 +29,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@drawable/bg_gradient_details"/>
+            android:background="@drawable/bg_gradient_lg_details"/>
 
         <ProgressBar
             android:id="@+id/trailerLoadingSpinner"
@@ -62,13 +62,13 @@
                 android:id="@+id/imgTitleLogo"
                 android:layout_width="280dp"
                 android:layout_height="110dp"
-                android:layout_gravity="center_horizontal"
+                android:layout_gravity="start"
                 android:scaleType="fitCenter"/>
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
+                android:layout_gravity="start"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:layout_marginTop="2dp">
@@ -77,10 +77,10 @@
                     android:id="@+id/tvRating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="#333333"
+                    android:background="@drawable/bg_lg_tag"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="1dp"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#FFD700"
                     android:textSize="11sp"
                     android:textStyle="bold"/>
 
@@ -105,7 +105,7 @@
                 android:id="@+id/tvGenre"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
+                android:layout_gravity="start"
                 android:layout_marginTop="2dp"
                 android:textColor="#BBBBBB"
                 android:textSize="12sp"/>
@@ -150,7 +150,7 @@
                 android:layout_height="55dp"
                 android:layout_marginHorizontal="20dp"
                 android:layout_marginTop="10dp"
-                android:background="@drawable/bg_btn_white"
+                android:background="@drawable/bg_lg_pill_branco"
                 android:text="▶  ASSISTIR"
                 android:textColor="#000000"
                 android:textSize="15sp"
@@ -165,7 +165,10 @@
 
                 <LinearLayout
                     android:id="@+id/btnRestartAction"
-                    android:layout_width="0dp"
+android:background="@drawable/bg_lg_pill"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                                        android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
@@ -189,7 +192,10 @@
 
                 <LinearLayout
                     android:id="@+id/btnTrailerAction"
-                    android:layout_width="0dp"
+android:background="@drawable/bg_lg_pill"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                                        android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
@@ -211,7 +217,10 @@
 
                 <LinearLayout
                     android:id="@+id/btnFavoriteLayout"
-                    android:layout_width="0dp"
+android:background="@drawable/bg_lg_pill"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                                        android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
@@ -236,7 +245,10 @@
 
                 <LinearLayout
                     android:id="@+id/btnDownloadAction"
-                    android:layout_width="0dp"
+android:background="@drawable/bg_lg_pill"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                                        android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
