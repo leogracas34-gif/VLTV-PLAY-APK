@@ -148,16 +148,6 @@
                             android:text="Sincronizando com o servidor..."
                             android:textColor="#888888"
                             android:textSize="12sp"/>
-                        <!-- ✅ NOVO: licença do APLICATIVO (igual à LG): Teste grátis / Ativa até / Vitalícia -->
-                        <TextView
-                            android:id="@+id/tvLicencaApp"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text=""
-                            android:textColor="#FFB020"
-                            android:textSize="13sp"
-                            android:visibility="gone"/>
 
                     </LinearLayout>
 
@@ -271,6 +261,142 @@
                     </LinearLayout>
 
                 </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- ── Seção Licença do aplicativo (igual à LG: status + código para ativar) ── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="LICENÇA DO APLICATIVO"
+                android:textColor="#666666"
+                android:textSize="11sp"
+                android:letterSpacing="0.15"
+                android:textStyle="bold"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="24dp"
+                android:paddingBottom="10dp"/>
+
+            <LinearLayout
+                android:id="@+id/cardLicencaApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_round"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvLicStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Verificando licença..."
+                            android:textColor="#FFFFFF"
+                            android:textSize="16sp"
+                            android:textStyle="bold"/>
+
+                        <TextView
+                            android:id="@+id/tvLicDetalhe"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text=""
+                            android:textColor="#888888"
+                            android:textSize="13sp"
+                            android:visibility="gone"/>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvLicBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text=""
+                        android:textColor="#000000"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="5dp"
+                        android:background="@drawable/bg_badge_round"
+                        android:visibility="gone"/>
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#1AFFFFFF"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="14dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="CÓDIGO DO APLICATIVO"
+                    android:textColor="#888888"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.1"
+                    android:textStyle="bold"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:id="@+id/tvLicCodigo"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="--------"
+                        android:textColor="#FFFFFF"
+                        android:textSize="26sp"
+                        android:textStyle="bold"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.12"
+                        android:maxLines="1"/>
+
+                    <TextView
+                        android:id="@+id/btnLicCopiar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Copiar"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="9dp"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@drawable/bg_input_round"/>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvLicAjuda"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text=""
+                    android:textColor="#888888"
+                    android:textSize="12sp"
+                    android:visibility="gone"/>
 
             </LinearLayout>
 
