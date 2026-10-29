@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botões secundários da tela de detalhes (Reiniciar, Trailer, Minha lista...)
+     — formato "pílula" do ".det-item" da LG. O texto desses botões é branco,
+     então no foco o fundo continua translúcido (não vira branco) e ganha
+     borda branca + brilho vermelho. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Com foco -->
+    <item android:state_focused="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <stroke android:width="4dp" android:color="#8CE50914" />
+                    <corners android:radius="30dp" />
+                </shape>
+            </item>
+            <item
+                android:left="3dp"
+                android:top="3dp"
+                android:right="3dp"
+                android:bottom="3dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="#40FFFFFF" />
+                    <stroke android:width="2dp" android:color="#FFFFFF" />
+                    <corners android:radius="27dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <!-- Apertado -->
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#40FFFFFF" />
+            <corners android:radius="28dp" />
+        </shape>
+    </item>
+
+    <!-- Normal -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#29FFFFFF" />
+            <corners android:radius="28dp" />
+        </shape>
+    </item>
+</selector>

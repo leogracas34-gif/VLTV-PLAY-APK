@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fundo das telas de login e ativação — mesmo fundo do app da LG:
+     base escura, brilho vermelho no canto superior esquerdo, brilho azulado
+     no canto inferior direito e um vermelho discreto embaixo. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base: #101018 em cima -> #09090D embaixo -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#101018"
+                android:endColor="#09090D" />
+        </shape>
+    </item>
+
+    <!-- Brilho vermelho no canto superior esquerdo -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.1"
+                android:centerY="0.0"
+                android:gradientRadius="85%p"
+                android:startColor="#4DE50914"
+                android:endColor="#00E50914" />
+        </shape>
+    </item>
+
+    <!-- Brilho azulado no canto inferior direito -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="1.0"
+                android:centerY="1.0"
+                android:gradientRadius="70%p"
+                android:startColor="#2E465AC8"
+                android:endColor="#00465AC8" />
+        </shape>
+    </item>
+
+    <!-- Vermelho discreto embaixo, no centro -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.5"
+                android:centerY="1.0"
+                android:gradientRadius="60%p"
+                android:startColor="#1FE50914"
+                android:endColor="#00E50914" />
+        </shape>
+    </item>
+</layer-list>

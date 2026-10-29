@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botão principal (Entrar / Já ativei — verificar) — igual ao ".botao" da LG:
+     vermelho #E50914; no foco ganha borda branca e brilho vermelho. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Desativado (enquanto carrega) -->
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <solid android:color="#8CE50914" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+    <!-- Com foco -->
+    <item android:state_focused="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <stroke android:width="4dp" android:color="#80E50914" />
+                    <corners android:radius="14dp" />
+                </shape>
+            </item>
+            <item
+                android:left="3dp"
+                android:top="3dp"
+                android:right="3dp"
+                android:bottom="3dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="#E50914" />
+                    <stroke android:width="2dp" android:color="#FFFFFF" />
+                    <corners android:radius="11dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <!-- Apertado -->
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#B20710" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+
+    <!-- Normal -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#E50914" />
+            <corners android:radius="12dp" />
+        </shape>
+    </item>
+</selector>

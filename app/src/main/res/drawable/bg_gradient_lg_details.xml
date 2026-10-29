@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Escurecido da tela de detalhes — igual ao ".det-grad" da LG:
+     escurece a esquerda (onde ficam os textos) e embaixo. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Esquerda -> direita -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:startColor="#EB000000"
+                android:centerColor="#59000000"
+                android:endColor="#00000000"
+                android:centerX="0.5" />
+        </shape>
+    </item>
+
+    <!-- Embaixo -> meio -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="90"
+                android:startColor="#D9000000"
+                android:centerColor="#00000000"
+                android:endColor="#00000000"
+                android:centerY="0.52" />
+        </shape>
+    </item>
+</layer-list>
