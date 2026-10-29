@@ -1,19 +1,23 @@
 package com.vltv.play
 
+import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.lifecycle.lifecycleScope
@@ -164,27 +168,140 @@ object LicencaHomeHelper {
         pilula.visibility = View.VISIBLE
     }
 
+    // Quadro próprio do app (cartão escuro arredondado, igual ao resto das telas), em vez do diálogo padrão do Android.
     private fun abrirQuadro(activity: AppCompatActivity) {
         if (activity.isFinishing || activity.isDestroyed) return
         val avisos = LicencaManager.avisos(activity, diasDoPlano(activity))
         val resumo = LicencaManager.resumo(activity)
-        val msg = StringBuilder()
-        avisos.forEach { msg.append("• ").append(it).append("\n\n") }
-        if (resumo.codigo.isNotBlank()) {
-            msg.append("Código do aplicativo: ").append(resumo.codigo).append("\n")
-            msg.append(resumo.ajuda)
-        }
-        val b = AlertDialog.Builder(activity)
-            .setTitle("Avisos")
-            .setMessage(msg.toString().trim())
-            .setNegativeButton("Fechar", null)
-        if (resumo.codigo.isNotBlank()) {
-            b.setPositiveButton("Copiar código") { _, _ ->
-                val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                cm?.setPrimaryClip(ClipData.newPlainText("codigo", resumo.codigo))
-                Toast.makeText(activity, "Código copiado", Toast.LENGTH_SHORT).show()
+        val dm = activity.resources.displayMetrics
+        val dp = dm.density
+        fun px(v: Int) = (v * dp).toInt()
+
+        val dialog = Dialog(activity)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+
+        val card = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(px(22), px(22), px(22), px(20))
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#181818"))
+                setStroke(px(1), Color.parseColor("#26FFFFFF"))
+                cornerRadius = 22 * dp
             }
         }
-        b.show()
+
+        // Título
+        card.addView(TextView(activity).apply {
+            text = "Avisos do aplicativo"
+            setTextColor(Color.WHITE)
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+        })
+
+        // Lista de avisos, cada um com um pontinho âmbar
+        avisos.forEach { aviso ->
+            val linha = LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.TOP
+                setPadding(0, px(14), 0, 0)
+            }
+            val ponto = View(activity).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(Color.parseColor("#FFB020"))
+                }
+            }
+            linha.addView(ponto, LinearLayout.LayoutParams(px(8), px(8)).apply {
+                topMargin = px(6); marginEnd = px(12)
+            })
+            linha.addView(TextView(activity).apply {
+                text = aviso
+                setTextColor(Color.parseColor("#E8E8E8"))
+                textSize = 14.5f
+                setLineSpacing(0f, 1.15f)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            card.addView(linha)
+        }
+
+        // Código do aplicativo
+        if (resumo.codigo.isNotBlank()) {
+            card.addView(View(activity).apply { setBackgroundColor(Color.parseColor("#1AFFFFFF")) },
+                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1)).apply {
+                    topMargin = px(18); bottomMargin = px(16)
+                })
+            card.addView(TextView(activity).apply {
+                text = "CÓDIGO DO APLICATIVO"
+                setTextColor(Color.parseColor("#888888"))
+                textSize = 11f
+                letterSpacing = 0.1f
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            val linhaCodigo = LinearLayout(activity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, px(8), 0, 0)
+            }
+            linhaCodigo.addView(TextView(activity).apply {
+                text = resumo.codigo
+                setTextColor(Color.WHITE)
+                textSize = 24f
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                letterSpacing = 0.12f
+                maxLines = 1
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            linhaCodigo.addView(TextView(activity).apply {
+                text = "Copiar"
+                setTextColor(Color.WHITE)
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                setPadding(px(16), px(9), px(16), px(9))
+                background = GradientDrawable().apply {
+                    setColor(Color.parseColor("#262626"))
+                    cornerRadius = 12 * dp
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    val cm = activity.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                    cm?.setPrimaryClip(ClipData.newPlainText("codigo", resumo.codigo))
+                    Toast.makeText(activity, "Código copiado", Toast.LENGTH_SHORT).show()
+                }
+            })
+            card.addView(linhaCodigo)
+            if (resumo.ajuda.isNotBlank()) {
+                card.addView(TextView(activity).apply {
+                    text = resumo.ajuda
+                    setTextColor(Color.parseColor("#888888"))
+                    textSize = 12f
+                    setPadding(0, px(10), 0, 0)
+                })
+            }
+        }
+
+        // Botão Fechar
+        card.addView(TextView(activity).apply {
+            text = "Fechar"
+            gravity = Gravity.CENTER
+            setTextColor(Color.BLACK)
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            background = GradientDrawable().apply {
+                setColor(Color.parseColor("#F5F3EF"))
+                cornerRadius = 12 * dp
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { dialog.dismiss() }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(46)).apply { topMargin = px(20) })
+
+        dialog.setContentView(card)
+        dialog.window?.apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setDimAmount(0.65f)
+            val largura = minOf(dm.widthPixels - px(32), px(440))
+            setLayout(largura, WindowManager.LayoutParams.WRAP_CONTENT)
+            setGravity(Gravity.CENTER)
+        }
+        dialog.show()
     }
 }
