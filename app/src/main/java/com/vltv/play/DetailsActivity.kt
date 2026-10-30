@@ -180,7 +180,8 @@ class DetailsActivity : AppCompatActivity() {
             // devagar entre imagens do TMDB, como na LG, e a avaliação (polegares) entra abaixo da sinopse.
             webViewTrailer.visibility = View.GONE
             trailerLoadingSpinner.visibility = View.GONE
-            DetalhesLgHelper.adicionarAvaliacao(this, tvPlot, if (isSeries) "serie" else "filme", streamId)
+            DetalhesLgHelper.configurarAvaliar(this, tvPlot, if (isSeries) "serie" else "filme", streamId)
+            findViewById<View>(R.id.btnVoltarDetalhes)?.setOnClickListener { finish() }
             setupBottomNavigation()
             carregarConteudo()
             setupEventos()
@@ -252,7 +253,7 @@ class DetailsActivity : AppCompatActivity() {
             val heroHeight = layoutHero.height.takeIf { it > 0 }
                 ?: (420 * resources.displayMetrics.density).toInt()
             val alpha = 1f - (scrollY.toFloat() / heroHeight).coerceIn(0f, 1f)
-            layoutHero.alpha    = alpha
+            // Banner rola junto com a página (estilo Netflix): sem esmaecer.
             btnToggleMute.alpha = alpha
 
             if (trailerReady) {

@@ -113,7 +113,7 @@ class PausaLgOverlay(
             scaleType = ImageView.ScaleType.FIT_START
             adjustViewBounds = true
             visibility = View.GONE
-            layoutParams = LinearLayout.LayoutParams((340 * dp).toInt(), (120 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams((220 * dp).toInt(), (76 * dp).toInt())
         }
         // Polegares (só o desenho) + frase, logo abaixo da logo.
         contAval = LinearLayout(ctx).apply {
@@ -277,6 +277,9 @@ class PausaLgOverlay(
                 setLineSpacing(0f, 1.15f)
                 setShadowLayer(10f, 0f, 2f, Color.parseColor("#B3000000"))
                 setPadding((6 * dp).toInt(), (10 * dp).toInt(), 0, 0)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                visibility = View.VISIBLE
             })
         } else {
             avalUi?.atualizar?.invoke()   // a nota pode ter mudado em outra tela

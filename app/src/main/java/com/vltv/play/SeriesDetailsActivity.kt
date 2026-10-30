@@ -179,9 +179,10 @@ class SeriesDetailsActivity : AppCompatActivity() {
         // Trailer em WebView removido: fundo com imagens do TMDB trocando devagar + avaliação, como na LG.
         webViewTrailer.visibility = View.GONE
         trailerLoadingSpinner.visibility = View.GONE
-        DetalhesLgHelper.adicionarAvaliacao(this, tvPlot, "serie", seriesId)
+        DetalhesLgHelper.configurarAvaliar(this, tvPlot, "serie", seriesId)
+        findViewById<View>(R.id.btnVoltarDetalhes)?.setOnClickListener { finish() }
         // Fundo fixo atrás da tela: só os episódios rolam, o fundo continua trocando.
-        val escurecerFundo = if (imgBackground != imgPoster) DetalhesLgHelper.fixarFundo(this, imgBackground) else null
+        val escurecerFundo = if (appBarLayout != null && imgBackground != imgPoster) DetalhesLgHelper.fixarFundo(this, imgBackground) else null
         verificarTecnologias(seriesName)
 
         appBarLayout?.addOnOffsetChangedListener { appBar, verticalOffset ->

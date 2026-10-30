@@ -296,4 +296,62 @@ object DetalhesLgHelper {
         })
         pai.addView(bloco, pai.indexOfChild(ancora) + 1)
     }
+
+    /**
+     * Liga o botão "Avaliar" (estilo Netflix) da tela de detalhes: abre um quadro com os três polegares.
+     * Em layouts sem o botão (TV/paisagem) cai no bloco de polegares dentro da página.
+     */
+    fun configurarAvaliar(activity: AppCompatActivity, ancora: View, tipo: String, id: Int) {
+        val botao = activity.findViewById<View>(R.id.btnAvaliar)
+        if (botao == null) {
+            adicionarAvaliacao(activity, ancora, tipo, id)
+            return
+        }
+        val icone = activity.findViewById<ImageView>(R.id.imgAvaliar)
+        fun pintarIcone() {
+            val v = try {
+                activity.getSharedPreferences("vltv_avaliacoes", android.content.Context.MODE_PRIVATE)
+                    .getString("${tipo}_$id", null)
+            } catch (e: Exception) { null }
+            icone?.setImageResource(when (v) {
+                "n" -> R.drawable.ic_aval_baixo
+                "a" -> R.drawable.ic_aval_amei_ativo
+                else -> R.drawable.ic_aval_gostei
+            })
+            icone?.alpha = if (v == null) 0.85f else 1f
+        }
+        pintarIcone()
+        botao.setOnClickListener {
+            val dp = activity.resources.displayMetrics.density
+            fun px(v: Int) = (v * dp).toInt()
+            val dialogo = android.app.Dialog(activity)
+            dialogo.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+            val caixa = LinearLayout(activity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(px(20), px(22), px(20), px(20))
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(Color.parseColor("#1C1C20"))
+                    cornerRadius = 18f * dp
+                }
+            }
+            val aval = criarAvaliacao(activity, tipo, id, comRotulos = true, alturaIconeDp = 34)
+            caixa.addView(aval.view)
+            caixa.addView(TextView(activity).apply {
+                text = FRASE_AVALIACAO
+                setTextColor(Color.parseColor("#B5B5BD"))
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setLineSpacing(0f, 1.15f)
+                setPadding(px(6), px(14), px(6), 0)
+            })
+            dialogo.setContentView(caixa)
+            dialogo.window?.apply {
+                setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+                setLayout((activity.resources.displayMetrics.widthPixels * 0.88f).toInt(),
+                    ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+            dialogo.setOnDismissListener { aval.atualizar(); pintarIcone() }
+            dialogo.show()
+        }
+    }
 }
