@@ -369,41 +369,41 @@ class SettingsActivity : AppCompatActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(16.dp, 14.dp, 16.dp, 14.dp)
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
             isClickable = true; isFocusable = true
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1A1A1A"))
-                cornerRadius = 10.dp.toFloat()
-                setStroke(1.dp, Color.parseColor("#2A2A2A"))
+                setColor(Color.parseColor("#14141C"))
+                cornerRadius = 16.dp.toFloat()
+                setStroke(1.dp, Color.parseColor("#1FFFFFFF"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 10.dp
+                bottomMargin = 8.dp
                 marginStart = 16.dp
                 marginEnd = 16.dp
             }
 
-            addView(criarIconeCircular("🔑", "#2A2A2A", 36))
+            addView(criarIconeCircular("🔑", "#A0A0B0", 40))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = 12.dp
+                    marginStart = 14.dp
                 }
                 addView(TextView(context).apply {
                     text = "Meu Acesso"
-                    textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                    textSize = 15f; typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.WHITE)
                 })
                 addView(TextView(context).apply {
                     text = "Ver usuário, senha e vencimento"
-                    textSize = 11f
+                    textSize = 12f
                     setTextColor(Color.parseColor("#888888"))
                 })
             })
             addView(TextView(context).apply {
-                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#555555"))
+                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#6A6A78"))
             })
             setOnClickListener { mostrarDialogMeuAcesso() }
         }
@@ -572,15 +572,17 @@ class SettingsActivity : AppCompatActivity() {
     // ✅ Desenha um ícone circular colorido com um emoji no centro — usado nos
     // cards de Suporte/FAQ pra não depender de nenhum ícone nativo do Android
     // (que costuma destoar visualmente do resto do app).
-    private fun criarIconeCircular(emoji: String, corFundoHex: String, sizeDp: Int = 36): TextView {
+    private fun criarIconeCircular(emoji: String, corFundoHex: String, sizeDp: Int = 40): TextView {
         return TextView(this).apply {
             text = emoji
             textSize = 16f
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(sizeDp.dp, sizeDp.dp)
             background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor(corFundoHex))
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 12.dp.toFloat()
+                // mesma cor, translúcida: combina com os quadradinhos das Configurações
+                setColor((Color.parseColor(corFundoHex) and 0x00FFFFFF) or 0x40000000)
             }
         }
     }
@@ -607,41 +609,41 @@ class SettingsActivity : AppCompatActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(16.dp, 14.dp, 16.dp, 14.dp)
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
             isClickable = true; isFocusable = true
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1A1A1A"))
-                cornerRadius = 10.dp.toFloat()
-                setStroke(1.dp, Color.parseColor("#2A2A2A"))
+                setColor(Color.parseColor("#14141C"))
+                cornerRadius = 16.dp.toFloat()
+                setStroke(1.dp, Color.parseColor("#1FFFFFFF"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 10.dp
+                bottomMargin = 8.dp
                 marginStart = 16.dp
                 marginEnd = 16.dp
             }
 
-            addView(criarIconeCircular("💬", "#25D366", 36))
+            addView(criarIconeCircular("💬", "#25D366", 40))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = 12.dp
+                    marginStart = 14.dp
                 }
                 addView(TextView(context).apply {
                     text = "Falar com Suporte"
-                    textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                    textSize = 15f; typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.WHITE)
                 })
                 addView(TextView(context).apply {
                     text = "Atendimento via WhatsApp"
-                    textSize = 11f
+                    textSize = 12f
                     setTextColor(Color.parseColor("#888888"))
                 })
             })
             addView(TextView(context).apply {
-                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#555555"))
+                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#6A6A78"))
             })
             setOnClickListener { abrirWhatsAppSuporte() }
         }
@@ -651,41 +653,41 @@ class SettingsActivity : AppCompatActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(16.dp, 14.dp, 16.dp, 14.dp)
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
             isClickable = true; isFocusable = true
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1A1A1A"))
-                cornerRadius = 10.dp.toFloat()
-                setStroke(1.dp, Color.parseColor("#2A2A2A"))
+                setColor(Color.parseColor("#14141C"))
+                cornerRadius = 16.dp.toFloat()
+                setStroke(1.dp, Color.parseColor("#1FFFFFFF"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 10.dp
+                bottomMargin = 8.dp
                 marginStart = 16.dp
                 marginEnd = 16.dp
             }
 
-            addView(criarIconeCircular("❓", "#2A2A2A", 36))
+            addView(criarIconeCircular("❓", "#A0A0B0", 40))
             addView(LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = 12.dp
+                    marginStart = 14.dp
                 }
                 addView(TextView(context).apply {
                     text = "Perguntas Frequentes"
-                    textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                    textSize = 15f; typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.WHITE)
                 })
                 addView(TextView(context).apply {
                     text = "Dúvidas comuns sobre o app"
-                    textSize = 11f
+                    textSize = 12f
                     setTextColor(Color.parseColor("#888888"))
                 })
             })
             addView(TextView(context).apply {
-                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#555555"))
+                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#6A6A78"))
             })
             setOnClickListener { mostrarDialogFaq() }
         }
@@ -898,6 +900,9 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    // ✅ "Sobre o aplicativo" igual ao da LG: informações do app (tipo, versão, código, licença, aparelho,
+    // suporte) e o aviso claro de que o VLTV Play é só um REPRODUTOR de mídia — não cria nem fornece conteúdo.
+    // (Texto importante para a Play Store.)
     private fun mostrarDialogSobre() {
         val versao = try {
             packageManager.getPackageInfo(packageName, 0).versionName
@@ -906,50 +911,98 @@ class SettingsActivity : AppCompatActivity() {
         val dialog = android.app.Dialog(this)
         dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
 
+        val scroll = ScrollView(this).apply { overScrollMode = ScrollView.OVER_SCROLL_NEVER }
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#141414"))
-            setPadding(24.dp, 28.dp, 24.dp, 20.dp)
+            setPadding(24.dp, 26.dp, 24.dp, 20.dp)
         }
+        scroll.addView(root)
 
         root.addView(criarWordmark().apply {
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 6.dp }
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 4.dp }
         })
-
         root.addView(TextView(this).apply {
-            text = "Versão $versao"
+            text = "Sobre o aplicativo"
             textSize = 12f
             setTextColor(Color.parseColor("#777777"))
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 18.dp }
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 16.dp }
         })
 
+        fun linha(rotulo: String, valor: String, corValor: String = "#FFFFFF", onClick: (() -> Unit)? = null) {
+            if (valor.isBlank()) return
+            root.addView(View(this).apply {
+                setBackgroundColor(Color.parseColor("#1FFFFFFF"))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1.dp)
+            })
+            root.addView(LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, 11.dp, 0, 11.dp)
+                addView(TextView(context).apply {
+                    text = rotulo; textSize = 13f
+                    setTextColor(Color.parseColor("#8A8A92"))
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.42f)
+                })
+                addView(TextView(context).apply {
+                    text = valor; textSize = 13.5f; typeface = Typeface.DEFAULT_BOLD
+                    gravity = Gravity.END
+                    setTextColor(Color.parseColor(corValor))
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.58f)
+                })
+                if (onClick != null) {
+                    isClickable = true; isFocusable = true
+                    setOnClickListener { onClick() }
+                }
+            })
+        }
+
+        val resumo = LicencaManager.resumo(this)
+        val licOk = LicencaManager.ehParceiro(this) ||
+            LicencaManager.estadoSalvo(this)?.estado == "active"
+
+        linha("Aplicativo", "VLTV Play")
+        linha("Tipo", "Reprodutor de mídia")
+        linha("Versão", versao ?: "")
+        linha("Código do aplicativo", resumo.codigo) {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+            cm?.setPrimaryClip(android.content.ClipData.newPlainText("codigo", resumo.codigo))
+            Toast.makeText(this, "Código copiado", Toast.LENGTH_SHORT).show()
+        }
+        linha("Licença", LicencaManager.textoCurto(this), if (licOk) "#5BE3A4" else "#FFB020")
+        linha("Aparelho", ((android.os.Build.MANUFACTURER ?: "") + " " + (android.os.Build.MODEL ?: "")).trim())
+        linha("Suporte", "leandro_gracas@yahoo.com.br") {
+            try {
+                startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:leandro_gracas@yahoo.com.br")))
+            } catch (e: Exception) { mostrarToastPremium("Nenhum app de e-mail encontrado") }
+        }
+        linha("WhatsApp", "+55 31 99849-1711") { abrirWhatsAppSuporte() }
+
+        root.addView(View(this).apply {
+            setBackgroundColor(Color.parseColor("#1FFFFFFF"))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1.dp)
+        })
+
+        // Aviso de reprodutor (mesmo texto da LG + reforço para a loja)
         root.addView(TextView(this).apply {
-            text = "Seu entretenimento premium em um só lugar.\nFilmes, séries, canais ao vivo e muito mais."
+            text = "O VLTV Play é um reprodutor de mídia. Ele não inclui nenhum canal, filme, série ou lista: " +
+                "o conteúdo vem do serviço que você contratou por conta própria, e o aplicativo apenas reproduz."
             textSize = 13f
-            setTextColor(Color.parseColor("#AAAAAA"))
-            setLineSpacing(0f, 1.4f)
-            gravity = Gravity.CENTER
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = 20.dp }
+            setTextColor(Color.parseColor("#C9C9D0"))
+            setLineSpacing(0f, 1.3f)
+            setPadding(0, 16.dp, 0, 0)
         })
-
-        root.addView(criarLinkRow("🌐", "Site Oficial", SITE_URL.removePrefix("https://")) {
-            dialog.dismiss()
-            abrirUrl(SITE_URL)
-        })
-
-        root.addView(criarLinkRow("📷", "Instagram", "@$INSTAGRAM_USERNAME") {
-            dialog.dismiss()
-            abrirInstagram(INSTAGRAM_USERNAME)
+        root.addView(TextView(this).apply {
+            text = "O VLTV Play não cria, produz, hospeda nem distribui conteúdo. Para usar, é preciso ter uma " +
+                "lista ou assinatura de um provedor de sua escolha."
+            textSize = 12.5f
+            setTextColor(Color.parseColor("#8A8A92"))
+            setLineSpacing(0f, 1.3f)
+            setPadding(0, 10.dp, 0, 0)
         })
 
         root.addView(TextView(this).apply {
@@ -960,23 +1013,24 @@ class SettingsActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 48.dp
-            ).apply { topMargin = 10.dp }
+            ).apply { topMargin = 20.dp }
             background = GradientDrawable().apply {
                 setColor(Color.WHITE)
-                cornerRadius = 8.dp.toFloat()
+                cornerRadius = 10.dp.toFloat()
             }
             isClickable = true; isFocusable = true
             setOnClickListener { dialog.dismiss() }
         })
 
-        dialog.setContentView(root)
+        dialog.setContentView(scroll)
         dialog.window?.apply {
             setBackgroundDrawable(GradientDrawable().apply {
                 setColor(Color.parseColor("#141414"))
-                cornerRadius = 16.dp.toFloat()
+                setStroke(1.dp, Color.parseColor("#26FFFFFF"))
+                cornerRadius = 18.dp.toFloat()
             })
             val p = attributes
-            p.width = (resources.displayMetrics.widthPixels * 0.85).toInt()
+            p.width = minOf((resources.displayMetrics.widthPixels * 0.9).toInt(), 460.dp)
             attributes = p
         }
         dialog.show()
@@ -2469,18 +2523,18 @@ class SettingsActivity : AppCompatActivity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(16.dp, 14.dp, 16.dp, 14.dp)
+            setPadding(16.dp, 16.dp, 16.dp, 16.dp)
             isClickable = true; isFocusable = true
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1A1A1A"))
-                cornerRadius = 10.dp.toFloat()
-                setStroke(1.dp, Color.parseColor("#2A2A2A"))
+                setColor(Color.parseColor("#14141C"))
+                cornerRadius = 16.dp.toFloat()
+                setStroke(1.dp, Color.parseColor("#1FFFFFFF"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                bottomMargin = 10.dp
+                bottomMargin = 8.dp
                 marginStart = 16.dp
                 marginEnd = 16.dp
             }
@@ -2497,18 +2551,18 @@ class SettingsActivity : AppCompatActivity() {
                     marginStart = 10.dp
                 }
                 addView(TextView(context).apply {
-                    text = "PIN de Perfis"; textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                    text = "PIN de Perfis"; textSize = 15f; typeface = Typeface.DEFAULT_BOLD
                     setTextColor(Color.WHITE)
                 })
                 addView(TextView(context).apply {
                     text = textoSubtituloPinPerfis()
-                    textSize = 11f
+                    textSize = 12f
                     setTextColor(Color.parseColor("#888888"))
                     tvSubtituloPinPerfis = this
                 })
             })
             addView(TextView(context).apply {
-                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#555555"))
+                text = "›"; textSize = 20f; setTextColor(Color.parseColor("#6A6A78"))
             })
             setOnClickListener { mostrarConfiguracaoPinPerfis() }
         }
