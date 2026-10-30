@@ -21,14 +21,17 @@
 
         <TextView
             android:id="@+id/btnBackSettings"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="14dp"
+            android:gravity="center"
             android:text="←"
             android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:paddingEnd="16dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"/>
+            android:textSize="20sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@drawable/bg_set_tile"
+            android:backgroundTint="#1FFFFFFF"/>
 
         <TextView
             android:layout_width="0dp"
@@ -66,7 +69,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="PERFIS"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -87,7 +90,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="ASSINATURA"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -101,7 +104,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:padding="16dp">
@@ -203,7 +206,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text=""
-                            android:textColor="#666666"
+                            android:textColor="#7C7C8A"
                             android:textSize="11sp"/>
 
                     </LinearLayout>
@@ -247,7 +250,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Usuário: —"
-                            android:textColor="#666666"
+                            android:textColor="#7C7C8A"
                             android:textSize="11sp"/>
 
                         <TextView
@@ -269,7 +272,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="LICENÇA DO APLICATIVO"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -282,7 +285,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:padding="16dp">
@@ -405,7 +408,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="CONTA"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -419,7 +422,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:padding="16dp">
@@ -429,6 +432,16 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="14dp"
+                    android:gravity="center"
+                    android:text="🔒"
+                    android:textSize="18sp"
+                    android:background="@drawable/bg_set_tile"
+                    android:backgroundTint="#337B61FF"/>
+
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -506,7 +519,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="APLICATIVO"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -521,12 +534,22 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:padding="16dp"
                 android:clickable="true"
                 android:focusable="true">
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="14dp"
+                    android:gravity="center"
+                    android:text="🧹"
+                    android:textSize="18sp"
+                    android:background="@drawable/bg_set_tile"
+                    android:backgroundTint="#334F8CFF"/>
+
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -556,7 +579,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="›"
-                    android:textColor="#555555"
+                    android:textColor="#6A6A78"
                     android:textSize="22sp"/>
 
             </LinearLayout>
@@ -568,12 +591,22 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:padding="16dp"
                 android:clickable="true"
                 android:focusable="true">
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="14dp"
+                    android:gravity="center"
+                    android:text="ℹ️"
+                    android:textSize="18sp"
+                    android:background="@drawable/bg_set_tile"
+                    android:backgroundTint="#33A0A0B0"/>
+
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -604,7 +637,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="›"
-                    android:textColor="#555555"
+                    android:textColor="#6A6A78"
                     android:textSize="22sp"/>
 
             </LinearLayout>
@@ -614,7 +647,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="CREDENCIAIS"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -629,12 +662,22 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:padding="16dp"
                 android:clickable="true"
                 android:focusable="true">
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="14dp"
+                    android:gravity="center"
+                    android:text="🔑"
+                    android:textSize="18sp"
+                    android:background="@drawable/bg_set_tile"
+                    android:backgroundTint="#33FFB020"/>
+
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -665,7 +708,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="›"
-                    android:textColor="#555555"
+                    android:textColor="#6A6A78"
                     android:textSize="22sp"/>
 
             </LinearLayout>
@@ -675,7 +718,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="SESSÃO"
-                android:textColor="#666666"
+                android:textColor="#7C7C8A"
                 android:textSize="11sp"
                 android:letterSpacing="0.15"
                 android:textStyle="bold"
@@ -690,11 +733,21 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@drawable/bg_card_round"
+                android:background="@drawable/bg_card_settings"
                 android:layout_marginHorizontal="16dp"
                 android:padding="16dp"
                 android:clickable="true"
                 android:focusable="true">
+                <TextView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="14dp"
+                    android:gravity="center"
+                    android:text="🚪"
+                    android:textSize="18sp"
+                    android:background="@drawable/bg_set_tile"
+                    android:backgroundTint="#33FF5A5F"/>
+
 
                 <LinearLayout
                     android:layout_width="0dp"
