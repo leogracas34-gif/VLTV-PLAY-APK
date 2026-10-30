@@ -5,42 +5,6 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- ═══ HERO (420dp) ═══ -->
-    <FrameLayout
-        android:id="@+id/layoutHero"
-        android:layout_width="match_parent"
-        android:layout_height="420dp"
-        android:layout_gravity="top">
-
-        <ImageView
-            android:id="@+id/imgBackground"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:alpha="0.9"/>
-
-        <WebView
-            android:id="@+id/webViewTrailer"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="invisible"
-            android:alpha="0"/>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_gradient_lg_details"/>
-
-        <ProgressBar
-            android:id="@+id/trailerLoadingSpinner"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_gravity="center"
-            android:indeterminateTint="#AAFFFFFF"
-            android:visibility="gone"/>
-
-    </FrameLayout>
-
     <!-- ═══ SCROLL ═══ -->
     <androidx.core.widget.NestedScrollView
         android:id="@+id/nestedScrollDetails"
@@ -52,31 +16,73 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="80dp">
+            android:paddingBottom="100dp">
+
+        <!-- Banner 16:9 (troca de fundo TMDB) — rola junto com a página, como na Netflix -->
+        <FrameLayout
+            android:id="@+id/layoutHero"
+            android:layout_width="match_parent"
+            android:layout_height="232dp"
+            >
+
+            <ImageView
+                android:id="@+id/imgBackground"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"/>
+
+            <WebView
+                android:id="@+id/webViewTrailer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="invisible"
+                android:alpha="0"/>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="270dp"/>
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_gradient_lg_details"/>
+
+            <ProgressBar
+                android:id="@+id/trailerLoadingSpinner"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="#AAFFFFFF"
+                android:visibility="gone"/>
+
+        </FrameLayout>
 
             <ImageView
                 android:id="@+id/imgTitleLogo"
-                android:layout_width="280dp"
-                android:layout_height="110dp"
+                android:layout_width="240dp"
+                android:layout_height="84dp"
                 android:layout_gravity="start"
-                android:scaleType="fitCenter"/>
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="14dp"
+                android:scaleType="fitStart"/>
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="2dp">
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvYear"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#BBBBBB"
+                    android:textSize="13sp"/>
 
                 <TextView
                     android:id="@+id/tvRating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
                     android:background="@drawable/bg_lg_tag"
                     android:paddingHorizontal="6dp"
                     android:paddingVertical="1dp"
@@ -85,18 +91,10 @@
                     android:textStyle="bold"/>
 
                 <TextView
-                    android:id="@+id/tvYear"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:textColor="#BBBBBB"
-                    android:textSize="12sp"/>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="HD • 5.1"
+                    android:layout_marginStart="10dp"
+                    android:text="HD"
                     android:textColor="#BBBBBB"
                     android:textSize="12sp"/>
             </LinearLayout>
@@ -106,6 +104,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="start"
+                android:layout_marginStart="16dp"
                 android:layout_marginTop="2dp"
                 android:textColor="#BBBBBB"
                 android:textSize="12sp"/>
@@ -115,7 +114,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginHorizontal="25dp"
+                android:layout_marginHorizontal="16dp"
                 android:layout_marginTop="15dp"
                 android:visibility="gone">
 
@@ -147,30 +146,68 @@
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnPlay"
                 android:layout_width="match_parent"
-                android:layout_height="55dp"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="46dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="14dp"
                 android:background="@drawable/bg_lg_pill_branco"
-                android:text="▶  ASSISTIR"
+                android:text="▶  Assistir"
                 android:textColor="#000000"
                 android:textSize="15sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:textAllCaps="false"/>
+
+            <LinearLayout
+                android:id="@+id/btnDownloadAction"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_lg_pill"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:clickable="true"
+                android:focusable="true">
+                <ImageView
+                    android:id="@+id/imgDownloadState"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_details_download"/>
+                <TextView
+                    android:id="@+id/tvDownloadState"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="Baixar"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvPlot"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginTop="16dp"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:lineSpacingExtra="2dp"
+                android:maxLines="4"
+                android:ellipsize="end"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
+                android:layout_marginTop="14dp"
                 android:orientation="horizontal"
-                android:gravity="center">
+                android:gravity="center_vertical">
 
                 <LinearLayout
                     android:id="@+id/btnRestartAction"
-android:background="@drawable/bg_lg_pill"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                                        android:layout_width="0dp"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:paddingVertical="8dp"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:clickable="true"
@@ -184,45 +221,18 @@ android:background="@drawable/bg_lg_pill"
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="REINICIAR"
-                        android:textColor="#FFFFFF"
-                        android:textSize="9sp"
-                        android:layout_marginTop="4dp"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/btnTrailerAction"
-android:background="@drawable/bg_lg_pill"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                                        android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:clickable="true"
-                    android:focusable="true">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_details_trailer"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="TRAILER"
-                        android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:text="Do início"
+                        android:textColor="#BBBBBB"
+                        android:textSize="11sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
 
                 <LinearLayout
                     android:id="@+id/btnFavoriteLayout"
-android:background="@drawable/bg_lg_pill"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                                        android:layout_width="0dp"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:paddingVertical="8dp"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:clickable="true"
@@ -237,50 +247,44 @@ android:background="@drawable/bg_lg_pill"
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="MINHA LISTA"
-                        android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:text="Minha lista"
+                        android:textColor="#BBBBBB"
+                        android:textSize="11sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
 
                 <LinearLayout
-                    android:id="@+id/btnDownloadAction"
-android:background="@drawable/bg_lg_pill"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                                        android:layout_width="0dp"
+                    android:id="@+id/btnAvaliar"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:paddingVertical="8dp"
                     android:gravity="center"
                     android:orientation="vertical"
                     android:clickable="true"
                     android:focusable="true">
                     <ImageView
-                        android:id="@+id/imgDownloadState"
+                        android:id="@+id/imgAvaliar"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_details_download"/>
+                        android:src="@drawable/ic_aval_gostei"/>
                     <TextView
-                        android:id="@+id/tvDownloadState"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="BAIXAR"
-                        android:textColor="#FFFFFF"
-                        android:textSize="9sp"
+                        android:text="Avaliar"
+                        android:textColor="#BBBBBB"
+                        android:textSize="11sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
-            </LinearLayout>
 
-            <TextView
-                android:id="@+id/tvPlot"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="20dp"
-                android:layout_marginTop="15dp"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:maxLines="3"
-                android:ellipsize="end"/>
+                <LinearLayout
+                    android:id="@+id/btnTrailerAction"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:visibility="gone"
+                    android:orientation="vertical"/>
+            </LinearLayout>
 
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/tabLayoutDetails"
@@ -383,6 +387,16 @@ android:background="@drawable/bg_lg_pill"
         android:focusable="true"
         android:visibility="gone"
         android:contentDescription="Mudo"/>
+
+    <ImageButton
+        android:id="@+id/btnVoltarDetalhes"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_circle_dark"
+        android:src="@android:drawable/ic_media_previous"
+        android:contentDescription="Voltar"
+        app:tint="#FFFFFF"/>
 
     <ImageButton
         android:id="@+id/btnClose"
