@@ -171,7 +171,7 @@ object LicencaHomeHelper {
     // Quadro próprio do app (cartão escuro arredondado, igual ao resto das telas), em vez do diálogo padrão do Android.
     private fun abrirQuadro(activity: AppCompatActivity) {
         if (activity.isFinishing || activity.isDestroyed) return
-        val avisos = LicencaManager.avisos(activity, diasDoPlano(activity))
+        val avisos = LicencaManager.avisos(activity, diasDoPlano(activity), LicencaManager.AVISO_HOME_DIAS)
         val resumo = LicencaManager.resumo(activity)
         val dm = activity.resources.displayMetrics
         val dp = dm.density

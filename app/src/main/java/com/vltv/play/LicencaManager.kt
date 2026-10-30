@@ -49,6 +49,8 @@ object LicencaManager {
     private const val URL_BASE = "https://api.vltvplay.tech"
     private const val TOLERANCIA_OFFLINE_S = 3 * 86400L
     const val AVISO_VENCIMENTO_DIAS = 7
+    /** A pílula da Home só aparece quando faltam este número de dias (ou menos). */
+    const val AVISO_HOME_DIAS = 2
 
     private val JSON_MT = "application/json".toMediaType()
 
@@ -331,13 +333,13 @@ object LicencaManager {
         if (e != null && !ehParceiro(ctx) && !e.vitalicio && e.expiraEm > 0 &&
             (e.estado == "trial" || e.estado == "active")) {
             val d = diasAte(e.expiraEm).toLong()
-            if (d in 0..AVISO_VENCIMENTO_DIAS.toLong()) {
+            if (d in 0..AVISO_HOME_DIAS.toLong()) {
                 itens.add(Item(d, if (e.estado == "trial") "Teste termina ${quando(d)}" else "Licença vence ${quando(d)}"))
             }
         }
         if (diasPlano != null) {
             if (diasPlano < 0) itens.add(Item(-1, "Plano vencido"))
-            else if (diasPlano <= AVISO_VENCIMENTO_DIAS) itens.add(Item(diasPlano, "Plano vence ${quando(diasPlano)}"))
+            else if (diasPlano <= AVISO_HOME_DIAS) itens.add(Item(diasPlano, "Plano vence ${quando(diasPlano)}"))
         }
         if (itens.isEmpty()) return null
         val primeiro = itens.minByOrNull { it.dias }!!
@@ -349,13 +351,13 @@ object LicencaManager {
      * de canais/filmes/séries (lista vencendo). diasPlano = null quando não vale
      * (vitalício ou sem informação).
      */
-    fun avisos(ctx: Context, diasPlano: Long?): List<String> {
+    fun avisos(ctx: Context, diasPlano: Long?, limite: Int = AVISO_VENCIMENTO_DIAS): List<String> {
         val lista = mutableListOf<String>()
         val e = estadoSalvo(ctx)
         if (e != null && !ehParceiro(ctx) && !e.vitalicio && e.expiraEm > 0 &&
             (e.estado == "trial" || e.estado == "active")) {
             val d = Math.ceil((e.expiraEm * 1000.0 - System.currentTimeMillis()) / 86400000.0).toInt()
-            if (d in 0..AVISO_VENCIMENTO_DIAS) {
+            if (d in 0..limite) {
                 val quando = when (d) { 0 -> "hoje"; 1 -> "amanhã"; else -> "em $d dias" }
                 lista.add(if (e.estado == "trial") "Seu teste grátis do aplicativo termina $quando"
                           else "A licença do aplicativo vence $quando")
@@ -363,7 +365,7 @@ object LicencaManager {
         }
         if (diasPlano != null) {
             if (diasPlano < 0) lista.add("O plano de canais, filmes e séries venceu. Fale com o seu provedor.")
-            else if (diasPlano <= AVISO_VENCIMENTO_DIAS) {
+            else if (diasPlano <= limite) {
                 lista.add("O plano de canais, filmes e séries vence " +
                         (when (diasPlano) { 0L -> "hoje"; 1L -> "amanhã"; else -> "em $diasPlano dias" }))
             }

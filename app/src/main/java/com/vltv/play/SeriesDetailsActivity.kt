@@ -176,7 +176,10 @@ class SeriesDetailsActivity : AppCompatActivity() {
 
         inicializarViews()
         BottomNavProfileHelper.aplicarPerfilNoRodape(this, bottomNavigation, currentProfile, currentProfileIcon)
-        setupWebViewTrailer()
+        // Trailer em WebView removido: fundo com imagens do TMDB trocando devagar + avaliação, como na LG.
+        webViewTrailer.visibility = View.GONE
+        trailerLoadingSpinner.visibility = View.GONE
+        DetalhesLgHelper.adicionarAvaliacao(this, tvPlot, "serie", seriesId)
         verificarTecnologias(seriesName)
 
         appBarLayout?.addOnOffsetChangedListener { appBar, verticalOffset ->
@@ -288,10 +291,6 @@ class SeriesDetailsActivity : AppCompatActivity() {
         tentarCarregarLogoCache()
         carregarSeriesInfo()
         sincronizarDadosTMDB()
-
-        trailerHandler.postDelayed({
-            if (!isFinishing && !isDestroyed) buscarETocarTrailer()
-        }, TRAILER_DELAY_MS)
 
         bottomNavigation.setOnItemSelectedListener { item ->
             when (item.itemId) {
@@ -749,12 +748,9 @@ class SeriesDetailsActivity : AppCompatActivity() {
                                 tvPlot.text = if (sinopse.isNotEmpty()) sinopse else "Sinopse indisponível."
                                 val vote = show.optDouble("vote_average", 0.0)
                                 if (vote > 0) tvRating.text = "Nota: ${String.format("%.1f", vote)}"
-                                val backdropPath = show.optString("backdrop_path")
-                                if (backdropPath.isNotEmpty() && imgBackground != imgPoster) {
-                                    // ✅ Imagem servida via VPS (VpsConfig)
-                                    Glide.with(this@SeriesDetailsActivity)
-                                        .load(VpsConfig.tmdbImage(backdropPath, "w1280"))
-                                        .centerCrop().into(imgBackground)
+                                // Fundo: rodízio de imagens do TMDB (igual à LG), no lugar de um backdrop só.
+                                if (imgBackground != imgPoster) {
+                                    DetalhesLgHelper.iniciarFundo(this@SeriesDetailsActivity, imgBackground, tmdbId, "tv")
                                 }
                                 Glide.with(this@SeriesDetailsActivity)
                                     .load(seriesIcon).placeholder(R.mipmap.ic_launcher).centerCrop().into(imgPoster)

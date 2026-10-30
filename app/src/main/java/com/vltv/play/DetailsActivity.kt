@@ -176,15 +176,15 @@ class DetailsActivity : AppCompatActivity() {
             tentarCarregarTextoCache()
             tentarCarregarLogoCache()
             sincronizarDadosTMDB()
-            setupWebViewTrailer()
+            // Trailer em WebView removido (vinha "sujo", com "trailer legendado"): o fundo agora troca
+            // devagar entre imagens do TMDB, como na LG, e a avaliação (polegares) entra abaixo da sinopse.
+            webViewTrailer.visibility = View.GONE
+            trailerLoadingSpinner.visibility = View.GONE
+            DetalhesLgHelper.adicionarAvaliacao(this, tvPlot, if (isSeries) "serie" else "filme", streamId)
             setupBottomNavigation()
             carregarConteudo()
             setupEventos()
             setupEpisodesRecycler()
-
-            trailerHandler.postDelayed({
-                if (!isFinishing && !isDestroyed) buscarETocarTrailer()
-            }, TRAILER_DELAY_MS)
 
         } catch (e: Exception) {
             Log.e("VLTV_DEBUG", "Erro no onCreate: ${e.message}")
@@ -680,6 +680,7 @@ class DetailsActivity : AppCompatActivity() {
                         val idTmdb = sel.getInt("id")
                         buscarLogoTMDB(idTmdb, type, apiKey)
                         buscarDetalhesCompletos(idTmdb, type, apiKey)
+                        runOnUiThread { DetalhesLgHelper.iniciarFundo(this@DetailsActivity, imgBackground, idTmdb, type) }
                         runOnUiThread {
                             val tOficial = if (type == "movie") sel.optString("title") else sel.optString("name")
                             val sinopse  = sel.optString("overview")

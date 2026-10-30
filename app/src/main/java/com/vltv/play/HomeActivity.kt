@@ -41,7 +41,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.vltv.play.databinding.ActivityHomeBinding
@@ -1761,17 +1760,59 @@ class HomeActivity : AppCompatActivity() {
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .error(R.drawable.bg_logo_placeholder)
 
-            // Crossfade a partir da imagem que já está no banner (em vez de cinza -> imagem, que piscava).
-            val atual = imgBanner.drawable
-            Glide.with(this@HomeActivity)
-                .load(backdropUrl.takeIf { it.isNotBlank() })
-                .centerCrop()
-                .format(DecodeFormat.PREFER_RGB_565)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .let { if (atual != null) it.placeholder(atual) else it.placeholder(R.drawable.bg_logo_placeholder) }
-                .error(fallbackRequest)
-                .transition(DrawableTransitionOptions.withCrossFade(380))
-                .into(imgBanner)
+            // Troca suave SEM reaproveitar o drawable antigo (usar a imagem atual como placeholder do Glide causava
+            // "Canvas: trying to use a recycled bitmap"): a imagem antiga some rápido (alpha), a nova carrega e entra
+            // com fade. Como o próximo banner já vem pré-carregado, isso quase sempre é instantâneo.
+            val versao = (imgBanner.getTag(R.id.imgBanner) as? Int ?: 0) + 1
+            imgBanner.setTag(R.id.imgBanner, versao)
+            fun entrar() {
+                if (imgBanner.getTag(R.id.imgBanner) != versao) return
+                imgBanner.animate().cancel()
+                imgBanner.animate().alpha(1f).setDuration(380).start()
+            }
+            val ouvinteFinal = object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
+                override fun onLoadFailed(e: com.bumptech.glide.load.engine.GlideException?, model: Any?,
+                    target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>, isFirstResource: Boolean): Boolean {
+                    entrar(); return false
+                }
+                override fun onResourceReady(resource: android.graphics.drawable.Drawable, model: Any,
+                    target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>?,
+                    dataSource: com.bumptech.glide.load.DataSource, isFirstResource: Boolean): Boolean {
+                    entrar(); return false
+                }
+            }
+            val fallbackComFade = fallbackRequest.listener(ouvinteFinal)
+
+            fun carregar() {
+                if (imgBanner.getTag(R.id.imgBanner) != versao) return
+                if (isFinishing || isDestroyed) return
+                Glide.with(this@HomeActivity)
+                    .load(backdropUrl.takeIf { it.isNotBlank() })
+                    .centerCrop()
+                    .format(DecodeFormat.PREFER_RGB_565)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .dontAnimate()
+                    .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
+                        override fun onLoadFailed(e: com.bumptech.glide.load.engine.GlideException?, model: Any?,
+                            target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>, isFirstResource: Boolean) = false
+                        override fun onResourceReady(resource: android.graphics.drawable.Drawable, model: Any,
+                            target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>?,
+                            dataSource: com.bumptech.glide.load.DataSource, isFirstResource: Boolean): Boolean {
+                            entrar(); return false
+                        }
+                    })
+                    .error(fallbackComFade.dontAnimate())
+                    .into(imgBanner)
+                // Rede de segurança: se nada avisar, o banner volta a aparecer.
+                imgBanner.postDelayed({ entrar() }, 2500)
+            }
+
+            if (imgBanner.drawable != null && imgBanner.alpha > 0f) {
+                imgBanner.animate().cancel()
+                imgBanner.animate().alpha(0f).setDuration(140).withEndAction { carregar() }.start()
+            } else {
+                carregar()
+            }
         } catch (e: Exception) {}
 
         // Texto/logo entram suavemente (fade), como o texto do banner da LG.
