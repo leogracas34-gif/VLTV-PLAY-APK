@@ -180,6 +180,8 @@ class SeriesDetailsActivity : AppCompatActivity() {
         webViewTrailer.visibility = View.GONE
         trailerLoadingSpinner.visibility = View.GONE
         DetalhesLgHelper.adicionarAvaliacao(this, tvPlot, "serie", seriesId)
+        // Fundo fixo atrás da tela: só os episódios rolam, o fundo continua trocando.
+        val escurecerFundo = if (imgBackground != imgPoster) DetalhesLgHelper.fixarFundo(this, imgBackground) else null
         verificarTecnologias(seriesName)
 
         appBarLayout?.addOnOffsetChangedListener { appBar, verticalOffset ->
@@ -193,6 +195,7 @@ class SeriesDetailsActivity : AppCompatActivity() {
             btnFavoriteSeries.alpha = alphaValue
             tvRating.alpha          = alphaValue
             tvGenre.alpha           = alphaValue
+            escurecerFundo?.alpha   = (percentage * 0.85f).coerceIn(0f, 0.85f)
 
             if (trailerReady) {
                 val heroColuiu = percentage > 0.7f
@@ -347,7 +350,7 @@ class SeriesDetailsActivity : AppCompatActivity() {
                 when (tab?.position) {
                     0 -> {
                         rvEpisodes.visibility          = View.VISIBLE
-                        tvPlot.visibility              = View.GONE
+                        tvPlot.visibility              = View.VISIBLE   // sinopse sempre visível (igual aos filmes)
                         tvCast.visibility              = View.GONE
                         recyclerCast.visibility        = View.GONE
                         tvReleaseDate.visibility       = View.GONE
@@ -356,7 +359,7 @@ class SeriesDetailsActivity : AppCompatActivity() {
                     }
                     1 -> {
                         rvEpisodes.visibility          = View.GONE
-                        tvPlot.visibility              = View.GONE
+                        tvPlot.visibility              = View.VISIBLE   // sinopse sempre visível (igual aos filmes)
                         tvCast.visibility              = View.GONE
                         recyclerCast.visibility        = View.GONE
                         tvReleaseDate.visibility       = View.GONE
@@ -804,7 +807,7 @@ class SeriesDetailsActivity : AppCompatActivity() {
     }
 
     private fun buscarLogoSerieTraduzida(id: Int, key: String, nomeLimpo: String) {
-        val imagesUrl = "https://api.themoviedb.org/3/tv/$id/images?api_key=$key&include_image_language=pt,null"
+        val imagesUrl = "https://api.themoviedb.org/3/tv/$id/images?api_key=$key&include_image_language=${TmdbLogos.IDIOMAS}"
         client.newCall(Request.Builder().url(imagesUrl).build()).enqueue(object : okhttp3.Callback {
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 val body = response.body?.string()
@@ -812,14 +815,8 @@ class SeriesDetailsActivity : AppCompatActivity() {
                     try {
                         val logos = JSONObject(body).optJSONArray("logos")
                         if (logos != null && logos.length() > 0) {
-                            var logoPath: String? = null
-                            for (i in 0 until logos.length()) {
-                                val logo = logos.getJSONObject(i)
-                                if (logo.optString("iso_639_1", "").equals("pt", ignoreCase = true)) {
-                                    val fp = logo.optString("file_path", "")
-                                    if (fp.isNotEmpty()) { logoPath = fp; break }
-                                }
-                            }
+                            // Mesma ordem da LG: pt-BR → pt → inglês → sem idioma (antes só aceitava português).
+                            val logoPath: String? = TmdbLogos.escolher(logos)
                             if (!logoPath.isNullOrEmpty()) {
                                 // ✅ Imagem servida via VPS (VpsConfig)
                                 val finalUrl = VpsConfig.tmdbImage(logoPath, "w500")
@@ -1074,6 +1071,7 @@ class SeriesDetailsActivity : AppCompatActivity() {
         val intent    = Intent(this, PlayerActivity::class.java)
         intent.putExtra("stream_id", streamId); intent.putExtra("stream_ext", ext)
         intent.putExtra("stream_type", "series")
+        intent.putExtra("series_id", seriesId)   // a tela de pausa usa a logo e a avaliação da série
         intent.putExtra("channel_name", "T${currentSeason}E${ep.episode_num} - $seriesName")
         intent.putExtra("PROFILE_NAME", currentProfile)
 

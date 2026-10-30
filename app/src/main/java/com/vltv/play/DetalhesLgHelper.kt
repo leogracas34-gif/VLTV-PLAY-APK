@@ -51,6 +51,31 @@ object DetalhesLgHelper {
      * tipo: "movie" ou "tv" (como no TMDB). Pode ser chamada de novo para o mesmo título
      * (a segunda chamada é ignorada).
      */
+    /**
+     * Tira o fundo da área que rola e coloca numa camada fixa atrás de tudo.
+     * Devolve a vista de escurecimento (alpha 0..1 conforme a rolagem) ou null.
+     */
+    fun fixarFundo(activity: AppCompatActivity, imgBase: ImageView): View? {
+        val raiz = (activity.findViewById<ViewGroup>(android.R.id.content)).getChildAt(0) as? FrameLayout ?: return null
+        val pai = imgBase.parent as? ViewGroup ?: return null
+        if (pai === raiz) return null
+        pai.removeView(imgBase)
+        val fixo = FrameLayout(activity)
+        fixo.addView(imgBase, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val escuro = View(activity).apply {
+            setBackgroundColor(0xFF0A0A0A.toInt())
+            alpha = 0f
+        }
+        raiz.addView(fixo, 0, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        // O escurecimento fica acima das camadas de troca (que entram logo após imgBase).
+        escuro.tag = "vltv_fundo_escuro"
+        fixo.addView(escuro, FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        return escuro
+    }
+
     fun iniciarFundo(activity: AppCompatActivity, imgBase: ImageView, tmdbId: Int, tipo: String) {
         if (tmdbId <= 0 || activity.isFinishing || activity.isDestroyed) return
         val chave = "$tipo/$tmdbId"
@@ -152,94 +177,123 @@ object DetalhesLgHelper {
 
     // ── 2) Avaliação ───────────────────────────────────────────────────────
 
-    /** tipo: "filme" ou "serie". Entra logo abaixo da sinopse (tvPlot). */
-    fun adicionarAvaliacao(activity: AppCompatActivity, ancora: View, tipo: String, id: Int) {
-        val pai = ancora.parent as? LinearLayout ?: return
-        if (pai.findViewWithTag<View>(TAG_AVAL) != null) return
-        val dp = activity.resources.displayMetrics.density
+    const val FRASE_AVALIACAO =
+        "Curtindo este título? A avaliação nos ajuda a saber se devemos recomendar títulos semelhantes."
+
+    class AvaliacaoUi(val view: View, val atualizar: () -> Unit)
+
+    /**
+     * Os três polegares (Não é para mim / Gostei / Amei!), SEM caixas em volta: só o desenho.
+     * O escolhido fica dourado (como na LG). tipo: "filme" ou "serie". A nota fica guardada no aparelho e é a
+     * mesma na tela de detalhes e na tela de pausa do player.
+     */
+    fun criarAvaliacao(
+        ctx: Context, tipo: String, id: Int,
+        comRotulos: Boolean, alturaIconeDp: Int = 30, aoCentro: Boolean = true
+    ): AvaliacaoUi {
+        val dp = ctx.resources.displayMetrics.density
         fun px(v: Int) = (v * dp).toInt()
-
-        val margemH = (ancora.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart?.takeIf { it > 0 } ?: px(20)
+        val prefs = ctx.getSharedPreferences(PREFS_AVAL, Context.MODE_PRIVATE)
         val chave = "${tipo}_$id"
-        val prefs = activity.getSharedPreferences(PREFS_AVAL, Context.MODE_PRIVATE)
+        val dourado = Color.parseColor("#FFD700")
+        val claro = Color.parseColor("#F2F2F2")
 
-        val bloco = LinearLayout(activity).apply {
-            tag = TAG_AVAL
-            orientation = LinearLayout.VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(margemH, px(18), margemH, px(6)) }
-        }
-
-        data class Op(val valor: String, val rotulo: String, val icone: Int)
+        data class Op(val valor: String, val rotulo: String, val icone: Int, val iconeAtivo: Int?)
         val opcoes = listOf(
-            Op("n", "Não é para mim", R.drawable.ic_aval_baixo),
-            Op("g", "Gostei", R.drawable.ic_aval_gostei),
-            Op("a", "Amei!", R.drawable.ic_aval_amei)
+            Op("n", "Não é para mim", R.drawable.ic_aval_baixo, null),
+            Op("g", "Gostei", R.drawable.ic_aval_gostei, null),
+            Op("a", "Amei!", R.drawable.ic_aval_amei, R.drawable.ic_aval_amei_ativo)
         )
 
-        val botoes = mutableListOf<Triple<String, LinearLayout, Pair<ImageView, TextView>>>()
+        val linha = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = if (aoCentro) Gravity.CENTER_HORIZONTAL else Gravity.START
+        }
+        val itens = mutableListOf<Triple<Op, ImageView, TextView?>>()
+
         fun pintar() {
             val atual = prefs.getString(chave, "") ?: ""
-            botoes.forEach { (valor, caixa, par) ->
-                val ativo = valor == atual
-                (caixa.background as GradientDrawable).setColor(Color.parseColor(if (ativo) "#EBFFFFFF" else "#26FFFFFF"))
-                val cor = if (ativo) Color.BLACK else Color.parseColor("#E8E8E8")
-                if (valor == "a") {
-                    // "Amei!" tem contorno próprio; por isso troca de desenho em vez de pintar de uma cor só.
-                    par.first.clearColorFilter()
-                    par.first.setImageResource(if (ativo) R.drawable.ic_aval_amei_escuro else R.drawable.ic_aval_amei)
+            itens.forEach { (op, img, rot) ->
+                val ativo = op.valor == atual
+                if (op.iconeAtivo != null) {
+                    img.clearColorFilter()
+                    img.setImageResource(if (ativo) op.iconeAtivo else op.icone)
                 } else {
-                    par.first.setColorFilter(cor)
+                    img.setColorFilter(if (ativo) dourado else claro)
                 }
-                par.second.setTextColor(cor)
+                rot?.setTextColor(if (ativo) dourado else Color.parseColor("#C9C9D0"))
             }
         }
 
-        val linha = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
+        val tv = android.util.TypedValue()
+        ctx.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, tv, true)
+
         opcoes.forEachIndexed { idx, op ->
-            val icone = ImageView(activity).apply {
+            val img = ImageView(ctx).apply {
                 setImageResource(op.icone)
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 adjustViewBounds = true
+                contentDescription = op.rotulo
             }
-            val rotulo = TextView(activity).apply {
+            val rot = if (comRotulos) TextView(ctx).apply {
                 text = op.rotulo
                 textSize = 12f
                 typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER
                 maxLines = 1
                 setPadding(0, px(6), 0, 0)
-            }
-            val caixa = LinearLayout(activity).apply {
+                setShadowLayer(8f, 0f, 2f, Color.parseColor("#99000000"))
+            } else null
+            val coluna = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(px(6), px(12), px(6), px(10))
-                background = GradientDrawable().apply { cornerRadius = 14 * dp }
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(px(14), px(8), px(14), px(8))
                 isClickable = true
                 isFocusable = true
+                try { setBackgroundResource(tv.resourceId) } catch (e: Exception) { }
                 setOnClickListener {
                     prefs.edit().putString(chave, op.valor).apply()
                     pintar()
                 }
-                addView(icone, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(26)))
-                addView(rotulo, LinearLayout.LayoutParams(
+                addView(img, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(alturaIconeDp)))
+                if (rot != null) addView(rot, LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             }
-            botoes.add(Triple(op.valor, caixa, icone to rotulo))
-            linha.addView(caixa, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
-                if (idx > 0) marginStart = px(8)
-            })
+            itens.add(Triple(op, img, rot))
+            linha.addView(coluna, LinearLayout.LayoutParams(
+                if (comRotulos) 0 else ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, if (comRotulos) 1f else 0f
+            ).apply { if (idx > 0 && !comRotulos) marginStart = px(10) })
         }
-        bloco.addView(linha)
+        pintar()
+        return AvaliacaoUi(linha, ::pintar)
+    }
+
+    /** tipo: "filme" ou "serie". Entra logo abaixo da sinopse (tvPlot). */
+    fun adicionarAvaliacao(activity: AppCompatActivity, ancora: View, tipo: String, id: Int) {
+        val pai = ancora.parent as? LinearLayout ?: return
+        if (pai.findViewWithTag<View>(TAG_AVAL) != null) return
+        val dp = activity.resources.displayMetrics.density
+        fun px(v: Int) = (v * dp).toInt()
+        val margemH = (ancora.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart?.takeIf { it > 0 } ?: px(20)
+
+        val bloco = LinearLayout(activity).apply {
+            tag = TAG_AVAL
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(margemH, px(14), margemH, px(6)) }
+        }
+        val aval = criarAvaliacao(activity, tipo, id, comRotulos = true, alturaIconeDp = 30)
+        bloco.addView(aval.view)
         bloco.addView(TextView(activity).apply {
-            text = "Curtindo este título? A avaliação nos ajuda a saber se devemos recomendar títulos semelhantes."
+            text = FRASE_AVALIACAO
             setTextColor(Color.parseColor("#B5B5BD"))
             textSize = 12f
+            gravity = Gravity.CENTER
             setLineSpacing(0f, 1.15f)
-            setPadding(0, px(12), 0, 0)
+            setPadding(px(8), px(8), px(8), 0)
         })
-        pintar()
-
         pai.addView(bloco, pai.indexOfChild(ancora) + 1)
     }
 }

@@ -7,6 +7,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -33,7 +34,11 @@ class PausaLgOverlay(
     private val raiz: ViewGroup,
     private val player: () -> ExoPlayer?,
     private val titulo: () -> String,
-    private val ehAoVivo: () -> Boolean
+    private val ehAoVivo: () -> Boolean,
+    // Endereço da logo do título (a mesma da tela de detalhes). null = mostra o nome em texto.
+    private val logoUrl: () -> String? = { null },
+    // ("filme"|"serie", id) para os polegares de avaliação. null = não mostra a avaliação.
+    private val avaliacao: () -> Pair<String, Int>? = { null }
 ) {
     companion object {
         private const val ATRASO_PAUSA_MS = 5000L   // igual à LG (ATRASO_PAUSA_MS)
@@ -48,6 +53,11 @@ class PausaLgOverlay(
     private val tvPausado: TextView
     private val tvEp: TextView
     private val tvTitulo: TextView
+    private val imgLogo: ImageView
+    private val contAval: LinearLayout
+    private var logoAtual: String? = null
+    private var avalAtual: String? = null
+    private var avalUi: DetalhesLgHelper.AvaliacaoUi? = null
     private val tvTempo: TextView
     private val barra: ProgressBar
 
@@ -98,8 +108,23 @@ class PausaLgOverlay(
             setShadowLayer(14f, 0f, 3f, Color.parseColor("#B3000000"))
             maxWidth = (520 * dp).toInt()
         }
+        // Logo do título (igual à LG): no lugar do nome em texto, quando existir.
+        imgLogo = ImageView(ctx).apply {
+            scaleType = ImageView.ScaleType.FIT_START
+            adjustViewBounds = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams((340 * dp).toInt(), (120 * dp).toInt())
+        }
+        // Polegares (só o desenho) + frase, logo abaixo da logo.
+        contAval = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = View.GONE
+            setPadding(0, (14 * dp).toInt(), 0, 0)
+        }
         meio.addView(tvEp)
+        meio.addView(imgLogo)
         meio.addView(tvTitulo)
+        meio.addView(contAval)
         painel.addView(meio)
 
         // Embaixo: ícone de pausa + tempo + barra (igual à LG).
@@ -189,7 +214,74 @@ class PausaLgOverlay(
             tvEp.visibility = View.GONE
             tvTitulo.text = bruto
         }
+        atualizarLogo()
+        atualizarAvaliacao()
         if (painel.visibility != View.VISIBLE) painel.visibility = View.VISIBLE
+    }
+
+    // Logo no lugar do nome (se não carregar, volta o nome em texto).
+    private fun atualizarLogo() {
+        val url = logoUrl()?.takeIf { it.isNotBlank() }
+        if (url == null) {
+            logoAtual = null
+            imgLogo.visibility = View.GONE
+            tvTitulo.visibility = View.VISIBLE
+            return
+        }
+        if (url == logoAtual) return
+        logoAtual = url
+        try {
+            com.bumptech.glide.Glide.with(imgLogo.context)
+                .load(url)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                .dontAnimate()
+                .listener(object : com.bumptech.glide.request.RequestListener<android.graphics.drawable.Drawable> {
+                    override fun onLoadFailed(e: com.bumptech.glide.load.engine.GlideException?, model: Any?,
+                        target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>,
+                        isFirstResource: Boolean): Boolean {
+                        imgLogo.post { imgLogo.visibility = View.GONE; tvTitulo.visibility = View.VISIBLE }
+                        return false
+                    }
+                    override fun onResourceReady(resource: android.graphics.drawable.Drawable, model: Any,
+                        target: com.bumptech.glide.request.target.Target<android.graphics.drawable.Drawable>?,
+                        dataSource: com.bumptech.glide.load.DataSource, isFirstResource: Boolean): Boolean {
+                        imgLogo.post { imgLogo.visibility = View.VISIBLE; tvTitulo.visibility = View.GONE }
+                        return false
+                    }
+                })
+                .into(imgLogo)
+        } catch (e: Exception) {
+            imgLogo.visibility = View.GONE; tvTitulo.visibility = View.VISIBLE
+        }
+    }
+
+    // Polegares + frase (mesma nota guardada da tela de detalhes).
+    private fun atualizarAvaliacao() {
+        val a = avaliacao()
+        if (a == null) { contAval.visibility = View.GONE; return }
+        val chave = "${a.first}_${a.second}"
+        val ctx = contAval.context
+        val dp = ctx.resources.displayMetrics.density
+        if (chave != avalAtual) {
+            avalAtual = chave
+            contAval.removeAllViews()
+            val ui = DetalhesLgHelper.criarAvaliacao(ctx, a.first, a.second,
+                comRotulos = false, alturaIconeDp = 34, aoCentro = false)
+            avalUi = ui
+            contAval.addView(ui.view)
+            contAval.addView(TextView(ctx).apply {
+                text = DetalhesLgHelper.FRASE_AVALIACAO
+                setTextColor(Color.parseColor("#D0D0D8"))
+                textSize = 14f
+                maxWidth = (520 * dp).toInt()
+                setLineSpacing(0f, 1.15f)
+                setShadowLayer(10f, 0f, 2f, Color.parseColor("#B3000000"))
+                setPadding((6 * dp).toInt(), (10 * dp).toInt(), 0, 0)
+            })
+        } else {
+            avalUi?.atualizar?.invoke()   // a nota pode ter mudado em outra tela
+        }
+        contAval.visibility = View.VISIBLE
     }
 
     private fun fmt(ms: Long): String {

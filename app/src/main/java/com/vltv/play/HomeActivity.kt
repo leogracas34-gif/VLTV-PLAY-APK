@@ -1992,16 +1992,17 @@ class HomeActivity : AppCompatActivity() {
 
     private fun buscarMelhorLogoTmdb(tmdbId: String, tipo: String, originalLanguage: String): String? {
         return try {
-            val imagesUrl = "https://api.themoviedb.org/3/$tipo/$tmdbId/images?api_key=$TMDB_API_KEY&include_image_language=pt,$originalLanguage,null"
+            val imagesUrl = "https://api.themoviedb.org/3/$tipo/$tmdbId/images?api_key=$TMDB_API_KEY&include_image_language=pt,en,$originalLanguage,null"
             val imagesJson = fetchUrlComTimeout(imagesUrl)
             val imagesObj = JSONObject(imagesJson)
             if (!imagesObj.has("logos")) return null
             val logos = imagesObj.getJSONArray("logos")
             if (logos.length() == 0) return null
 
-            var bestPath: String? = null
+            // Mesma ordem da LG (pt-BR → pt → inglês → sem idioma); os passos abaixo só valem se não achar nada.
+            var bestPath: String? = TmdbLogos.escolher(logos)
 
-            for (i in 0 until logos.length()) {
+            if (bestPath == null) for (i in 0 until logos.length()) {
                 val logo = logos.getJSONObject(i)
                 if (logo.optString("iso_639_1") == "pt") { bestPath = logo.getString("file_path"); break }
             }

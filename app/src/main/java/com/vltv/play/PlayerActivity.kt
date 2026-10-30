@@ -454,7 +454,24 @@ class PlayerActivity : AppCompatActivity() {
             raiz = playerView.parent as ViewGroup,
             player = { player },
             titulo = { tvChannelName.text.toString() },
-            ehAoVivo = { streamType == "live" }
+            ehAoVivo = { streamType == "live" },
+            // Logo e avaliação: mesma logo guardada pela tela de detalhes e mesma nota (igual à LG).
+            logoUrl = {
+                val logos = getSharedPreferences("vltv_logos_cache", Context.MODE_PRIVATE)
+                when (streamType) {
+                    "movie" -> logos.getString("movie_logo_$streamId", null)
+                    "series" -> this.intent.getIntExtra("series_id", 0).takeIf { it > 0 }
+                        ?.let { logos.getString("series_logo_$it", null) }
+                    else -> null
+                }
+            },
+            avaliacao = {
+                when (streamType) {
+                    "movie" -> "filme" to streamId
+                    "series" -> this.intent.getIntExtra("series_id", 0).takeIf { it > 0 }?.let { "serie" to it }
+                    else -> null
+                }
+            }
         ).also { it.iniciar() }
 
         btnAspect.setOnClickListener {
@@ -1252,6 +1269,7 @@ class PlayerActivity : AppCompatActivity() {
         intent.putExtra("stream_id",    nextStreamId)
         intent.putExtra("stream_ext",   extProximo)
         intent.putExtra("stream_type",  "series")
+        intent.putExtra("series_id",    this.intent.getIntExtra("series_id", 0))
         intent.putExtra("channel_name", novoTitulo)
         intent.putExtra("PROFILE_NAME", currentProfile)
 

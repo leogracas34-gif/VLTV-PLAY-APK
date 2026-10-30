@@ -704,7 +704,7 @@ class DetailsActivity : AppCompatActivity() {
     }
 
     private fun buscarLogoTMDB(id: Int, type: String, key: String) {
-        val url = "https://api.themoviedb.org/3/$type/$id/images?api_key=$key&include_image_language=pt-BR,pt,null"
+        val url = "https://api.themoviedb.org/3/$type/$id/images?api_key=$key&include_image_language=${TmdbLogos.IDIOMAS}"
         client.newCall(Request.Builder().url(url).build()).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 runOnUiThread { tvTitle.visibility = View.VISIBLE; imgTitleLogo.visibility = View.GONE }
@@ -714,22 +714,8 @@ class DetailsActivity : AppCompatActivity() {
                 try {
                     val logos = JSONObject(body).optJSONArray("logos")
                     if (logos != null && logos.length() > 0) {
-                        var path: String? = null
-                        for (i in 0 until logos.length()) {
-                            val lg = logos.getJSONObject(i)
-                            if (lg.optString("iso_639_1").lowercase() == "pt" &&
-                                lg.optString("iso_3166_1").uppercase() == "BR") {
-                                path = lg.optString("file_path").takeIf { it.isNotEmpty() }
-                                if (path != null) break
-                            }
-                        }
-                        if (path == null) for (i in 0 until logos.length()) {
-                            val lg = logos.getJSONObject(i)
-                            if (lg.optString("iso_639_1").lowercase() == "pt") {
-                                path = lg.optString("file_path").takeIf { it.isNotEmpty() }
-                                if (path != null) break
-                            }
-                        }
+                        // Mesma ordem da LG: pt-BR → pt → inglês → sem idioma (antes só aceitava português).
+                        val path: String? = TmdbLogos.escolher(logos)
                         if (path == null) {
                             runOnUiThread { tvTitle.visibility = View.VISIBLE; imgTitleLogo.visibility = View.GONE }
                             return

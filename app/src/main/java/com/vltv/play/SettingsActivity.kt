@@ -93,7 +93,7 @@ class SettingsActivity : AppCompatActivity() {
         ),
         FaqItem(
             "Posso usar minha conta em mais de um aparelho ao mesmo tempo?",
-            "Isso depende do seu plano de assinatura. Consulte o suporte pelo WhatsApp para confirmar o limite de telas simultâneas da sua conta."
+            "Isso depende do seu plano. Entre em contato com o seu provedor de serviço e verifique essa condição, pois o VLTV Play é apenas um reprodutor de mídia."
         )
     )
 
