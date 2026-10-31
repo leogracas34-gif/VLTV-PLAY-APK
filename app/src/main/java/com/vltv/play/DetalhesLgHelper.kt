@@ -81,6 +81,7 @@ object DetalhesLgHelper {
         val chave = "$tipo/$tmdbId"
         if (imgBase.getTag(R.id.imgBackground) == chave) return
         imgBase.setTag(R.id.imgBackground, chave)
+        ClassificacaoIndicativa.aplicar(activity, tmdbId, tipo)
 
         val pai = imgBase.parent as? FrameLayout ?: return
         val alvo = if (imgBase.alpha > 0f) imgBase.alpha else 1f
