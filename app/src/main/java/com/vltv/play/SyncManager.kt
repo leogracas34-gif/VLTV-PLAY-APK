@@ -267,6 +267,46 @@ object SyncManager {
         }
     }
 
+    /**
+     * ✅ NOVO (Home completa já na 1ª abertura): baixa o PACOTE INICIAL da VPS (itens
+     * recentes de cada categoria + Top 10 / Top 10 Brasil / Novidades / selos) e grava
+     * no Room + memória. Chamado pelo LoginActivity logo depois do login — enquanto o
+     * cliente ainda está na tela de perfis — pra, quando a Home abrir, as fileiras já
+     * estarem cheias (antes isso só começava DEPOIS que a Home abria).
+     * Só roda se este aparelho ainda NÃO completou uma sincronização completa pra esse
+     * usuário. Nunca lança erro: se a VPS não responder, a sincronização normal da Home
+     * segue exatamente como antes.
+     */
+    suspend fun preCarregarPacoteInicial(context: Context) {
+        try {
+            mutex.withLock {
+                val prefs = context.getSharedPreferences("vltv_prefs", Context.MODE_PRIVATE)
+                val user = prefs.getString("username", "") ?: ""
+                if (user.isEmpty()) return@withLock
+
+                val prefsEstado = context.getSharedPreferences("vltv_sync_state", Context.MODE_PRIVATE)
+                if (prefsEstado.getLong("ultima_sync_completa_" + user, 0L) != 0L) return@withLock
+
+                val dnsBackend = XtreamApi.dominioBackend(context).takeIf { it.isNotBlank() }
+                    ?: (prefs.getString("dns", "") ?: "")
+                if (dnsBackend.isBlank()) return@withLock
+
+                val db = AppDatabase.getDatabase(context)
+                val vodsExistentes = try { db.streamDao().getAllVods().associateBy { it.stream_id } } catch (e: Exception) { emptyMap() }
+                val seriesExistentes = try { db.streamDao().getAllSeries().associateBy { it.series_id } } catch (e: Exception) { emptyMap() }
+                val palavrasProibidas = listOf("XXX", "PORN", "ADULTO", "SEXO", "EROTICO", "🔞", "PORNÔ")
+
+                withTimeoutOrNull(15_000L) {
+                    aplicarPacoteInicial(db, dnsBackend, palavrasProibidas, vodsExistentes, seriesExistentes)
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     /** Reseta o estado — chamar apenas no logout, para a próxima sessão sincronizar de novo. */
     fun resetarSessao() {
         jobAtual?.cancel()
