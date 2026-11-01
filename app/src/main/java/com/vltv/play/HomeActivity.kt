@@ -489,7 +489,8 @@ class HomeActivity : AppCompatActivity() {
         if (isFinishing || isDestroyed) return
         bannerItemAtual = item
         bannerAdapter.updateItem(item)
-        preCarregarProximoBanner()
+        // preCarregarProximoBanner() desligado: baixava imagens e consultava o TMDB em segundo plano durante o
+        // carregamento inicial, disputando a rede com o catálogo no celular. A função continua abaixo, sem uso.
     }
 
     // Fluidez (como a LG, que prepara o próximo slide antes de trocar): resolve o backdrop/logo do PRÓXIMO
