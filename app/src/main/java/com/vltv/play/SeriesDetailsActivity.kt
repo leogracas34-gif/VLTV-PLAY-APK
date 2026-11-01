@@ -180,7 +180,6 @@ class SeriesDetailsActivity : AppCompatActivity() {
         webViewTrailer.visibility = View.GONE
         trailerLoadingSpinner.visibility = View.GONE
         DetalhesLgHelper.configurarAvaliar(this, tvPlot, "serie", seriesId)
-        findViewById<View>(R.id.btnVoltarDetalhes)?.setOnClickListener { finish() }
         // Fundo fixo atrás da tela: só os episódios rolam, o fundo continua trocando.
         val escurecerFundo = if (appBarLayout != null && imgBackground != imgPoster) DetalhesLgHelper.fixarFundo(this, imgBackground) else null
         verificarTecnologias(seriesName)

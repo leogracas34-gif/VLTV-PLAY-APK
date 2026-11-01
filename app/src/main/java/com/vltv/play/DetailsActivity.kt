@@ -181,7 +181,6 @@ class DetailsActivity : AppCompatActivity() {
             webViewTrailer.visibility = View.GONE
             trailerLoadingSpinner.visibility = View.GONE
             DetalhesLgHelper.configurarAvaliar(this, tvPlot, if (isSeries) "serie" else "filme", streamId)
-            findViewById<View>(R.id.btnVoltarDetalhes)?.setOnClickListener { finish() }
             setupBottomNavigation()
             carregarConteudo()
             setupEventos()

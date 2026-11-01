@@ -359,7 +359,7 @@ object DetalhesLgHelper {
                 // Android 12+: desfoca a tela atrás da janela (efeito vidro). Onde não há suporte, só o escurecimento.
                 if (android.os.Build.VERSION.SDK_INT >= 31) {
                     try {
-                        addFlags(android.view.WindowManager.FLAG_BLUR_BEHIND)
+                        addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
                         attributes = attributes.apply { blurBehindRadius = 28 }
                     } catch (e: Exception) { }
                 }
