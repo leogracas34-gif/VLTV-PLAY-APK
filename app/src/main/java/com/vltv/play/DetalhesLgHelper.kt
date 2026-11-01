@@ -244,6 +244,9 @@ object DetalhesLgHelper {
                 maxLines = 1
                 setPadding(0, px(6), 0, 0)
                 setShadowLayer(8f, 0f, 2f, Color.parseColor("#99000000"))
+                // Encolhe o texto só o necessário para caber em 1 linha (antes "Não é para mim" aparecia cortado).
+                androidx.core.widget.TextViewCompat.setAutoSizeTextTypeUniformWithConfiguration(
+                    this, 9, 12, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
             } else null
             val coluna = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
@@ -258,7 +261,7 @@ object DetalhesLgHelper {
                 }
                 addView(img, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(alturaIconeDp)))
                 if (rot != null) addView(rot, LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             }
             itens.add(Triple(op, img, rot))
             linha.addView(coluna, LinearLayout.LayoutParams(
@@ -330,9 +333,11 @@ object DetalhesLgHelper {
             val caixa = LinearLayout(activity).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(px(20), px(22), px(20), px(20))
+                // Vidro escuro: fundo levemente translúcido + contorno fino de luz (a capa aparece suave por trás).
                 background = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(Color.parseColor("#1C1C20"))
-                    cornerRadius = 18f * dp
+                    setColor(Color.parseColor("#E61A1A1F"))
+                    setStroke(px(1), Color.parseColor("#26FFFFFF"))
+                    cornerRadius = 22f * dp
                 }
             }
             val aval = criarAvaliacao(activity, tipo, id, comRotulos = true, alturaIconeDp = 34)
@@ -350,6 +355,14 @@ object DetalhesLgHelper {
                 setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
                 setLayout((activity.resources.displayMetrics.widthPixels * 0.88f).toInt(),
                     ViewGroup.LayoutParams.WRAP_CONTENT)
+                setDimAmount(0.45f)   // escurece menos o fundo (antes ficava quase preto)
+                // Android 12+: desfoca a tela atrás da janela (efeito vidro). Onde não há suporte, só o escurecimento.
+                if (android.os.Build.VERSION.SDK_INT >= 31) {
+                    try {
+                        addFlags(android.view.WindowManager.FLAG_BLUR_BEHIND)
+                        attributes = attributes.apply { blurBehindRadius = 28 }
+                    } catch (e: Exception) { }
+                }
             }
             dialogo.setOnDismissListener { aval.atualizar(); pintarIcone() }
             dialogo.show()
