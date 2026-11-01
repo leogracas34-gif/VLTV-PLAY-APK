@@ -440,15 +440,6 @@
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <ImageButton
-        android:id="@+id/btnVoltarDetalhes"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_margin="12dp"
-        android:background="@drawable/bg_circle_dark"
-        android:src="@android:drawable/ic_media_previous"
-        android:contentDescription="Voltar"
-        app:tint="#FFFFFF"/>
 
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottomNavigation"
