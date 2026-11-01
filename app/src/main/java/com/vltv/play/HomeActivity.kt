@@ -217,10 +217,10 @@ class HomeActivity : AppCompatActivity() {
 
         // ✅ Destaque da semana vem da VPS (aba "Destaque da semana" do painel admin, a MESMA das TVs LG/Samsung).
         // Rota pública /lg/config: devolve destaque_ativo, destaque_tipo, destaque_nome, destaque_sinopse,
-        // destaque_tmdb e destaque_imagem. Com a Home aberta, consulta a cada ~15 s.
+        // destaque_tmdb e destaque_imagem. Com a Home aberta, consulta a cada ~5 s (e na hora ao voltar pro app).
         @Volatile private var ultimoFetchDestaqueMs = 0L
-        private const val INTERVALO_MINIMO_DESTAQUE_MS = 12_000L
-        private const val INTERVALO_VIGIA_DESTAQUE_MS = 15_000L
+        private const val INTERVALO_MINIMO_DESTAQUE_MS = 3_000L
+        private const val INTERVALO_VIGIA_DESTAQUE_MS = 5_000L
         private const val URL_BASE_VPS = "https://api.vltvplay.tech"
         private const val PREF_DESTAQUE_JSON = "destaque_vps_json"
         private const val PREF_DESTAQUE_RESOLVIDO = "destaque_vps_resolvido"
@@ -2473,14 +2473,16 @@ class HomeActivity : AppCompatActivity() {
     private var destaqueAplicado: DestaqueVps? = null
     private var vigiaDestaqueJob: kotlinx.coroutines.Job? = null
 
-    // Enquanto a Home está na tela, confere a VPS a cada ~15 s: mudou no painel, muda no app.
+    // Enquanto a Home está na tela, confere a VPS a cada ~5 s: mudou no painel, muda no app.
+    // ✅ CORRIGIDO: a 1ª conferência agora é IMEDIATA ao voltar pra Home (antes só vinha depois
+    // do 1º intervalo), e o intervalo caiu de 15 s pra 5 s.
     private fun iniciarVigiaDestaque() {
         vigiaDestaqueJob?.cancel()
         vigiaDestaqueJob = lifecycleScope.launch(Dispatchers.Main) {
             while (true) {
-                delay(INTERVALO_VIGIA_DESTAQUE_MS)
                 if (isFinishing || isDestroyed) break
                 atualizarDestaqueDaVps()
+                delay(INTERVALO_VIGIA_DESTAQUE_MS)
             }
         }
     }
@@ -2526,7 +2528,7 @@ class HomeActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // "?_=" evita resposta velha guardada em cache no caminho.
-                val bruto = fetchUrlComTimeout("$URL_BASE_VPS/lg/config?_=$agora", 8000)
+                val bruto = fetchUrlComTimeout("$URL_BASE_VPS/lg/config?_=$agora", 6000)
                 val novo = destaqueDoJson(JSONObject(bruto))
                 prefs.edit().putString(PREF_DESTAQUE_JSON, bruto).apply()
                 withContext(Dispatchers.Main) {
@@ -2585,7 +2587,9 @@ class HomeActivity : AppCompatActivity() {
         buscarIdFeaturedBanner(card, d.nome, d.isSeries, "")
         if (!ContentRepository.pronto) {
             ContentRepository.aoFicarPronto {
-                if (!isFinishing && !isDestroyed) {
+                // ✅ CORRIGIDO: se o destaque foi desligado/trocado enquanto esperava o
+                // repositório ficar pronto, NÃO reaparece com o destaque velho.
+                if (!isFinishing && !isDestroyed && meuId == idDestaque) {
                     buscarIdFeaturedBanner(card, d.nome, d.isSeries, "")
                 }
             }
@@ -2733,6 +2737,10 @@ class HomeActivity : AppCompatActivity() {
         isSeriesRC: Boolean,
         contentIdRC: String
     ) {
+        // ✅ CORRIGIDO: guarda qual destaque era o atual quando a busca começou. Se o painel
+        // desligar/trocar o destaque antes da busca terminar, o resultado velho é descartado
+        // (antes ele podia religar o card que já tinha sido escondido).
+        val idDaBusca = idDestaque
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 var streamId: Int? = null
@@ -2782,6 +2790,7 @@ class HomeActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     if (isFinishing || isDestroyed) return@withContext
+                    if (idDaBusca != idDestaque) return@withContext // destaque mudou/desligou no meio da busca
 
                     val encontrado = idForcado != null || streamId != null || seriesId != null
                     if (!encontrado) {

@@ -370,7 +370,7 @@ object SyncManager {
             val inicialJob = if (localSemCatalogoCompleto) {
                 scope.async {
                     try {
-                        withTimeoutOrNull(10_000L) {
+                        withTimeoutOrNull(20_000L) {
                             aplicarPacoteInicial(db, dnsBackend, palavrasProibidas, vodsExistentes, seriesExistentes)
                         }
                     } catch (e: CancellationException) {
@@ -429,6 +429,18 @@ object SyncManager {
             // completo (que o sobrescreve com a versão inteira).
             try { inicialJob?.await() } catch (e: Exception) { e.printStackTrace() }
 
+            // ✅ CORRIGIDO (Top 10/Novidades sumindo e voltando na 1ª abertura): o pacote
+            // inicial já gravou no Room os itens COM Top10/selos. Se o catálogo completo
+            // fosse gravado com o mapa `vodsExistentes` lido ANTES do pacote, ele
+            // sobrescreveria essas marcas com 0 (insert REPLACE). Re-lê o Room aqui pra
+            // preservá-las. (O ramo "download pulado" continua usando o mapa original.)
+            val vodsBase: Map<Int, VodEntity> = if (inicialJob != null) {
+                try { db.streamDao().getAllVods().associateBy { it.stream_id } } catch (e: Exception) { vodsExistentes }
+            } else vodsExistentes
+            val seriesBase: Map<Int, SeriesEntity> = if (inicialJob != null) {
+                try { db.streamDao().getAllSeries().associateBy { it.series_id } } catch (e: Exception) { seriesExistentes }
+            } else seriesExistentes
+
             if (pularDownloadCompleto) {
                 // Banco local já está completo e recente: reaproveita e
                 // vai direto pra parte leve (Top10/Novidades/selos).
@@ -448,26 +460,26 @@ object SyncManager {
                         try {
                             val vodArray = catalogoBackend?.vodArray
                                 ?: buscarArrayXtream(dns, user, pass, "get_vod_streams")
-                            sincronizarVod(db, vodArray, palavrasProibidas, vodsExistentes)
+                            sincronizarVod(db, vodArray, palavrasProibidas, vodsBase)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             e.printStackTrace()
                             baixouTudo = false
-                            vodsExistentes.values.toList()
+                            vodsBase.values.toList()
                         }
                     }
                     val seriesJob = async {
                         try {
                             val seriesArray = catalogoBackend?.seriesArray
                                 ?: buscarArrayXtream(dns, user, pass, "get_series")
-                            sincronizarSeries(db, seriesArray, palavrasProibidas, seriesExistentes)
+                            sincronizarSeries(db, seriesArray, palavrasProibidas, seriesBase)
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
                             e.printStackTrace()
                             baixouTudo = false
-                            seriesExistentes.values.toList()
+                            seriesBase.values.toList()
                         }
                     }
 
@@ -665,14 +677,54 @@ object SyncManager {
         db: AppDatabase, dns: String, palavrasProibidas: List<String>,
         vodsExistentes: Map<Int, VodEntity>, seriesExistentes: Map<Int, SeriesEntity>
     ) {
-        val pacote = HomeApiClient.buscarCatalogoInicial(dns) ?: return
-        sincronizarVod(db, pacote.vodArray, palavrasProibidas, vodsExistentes)
-        sincronizarSeries(db, pacote.seriesArray, palavrasProibidas, seriesExistentes)
-        ContentRepository.atualizarVods(db.streamDao().getAllVods())
-        ContentRepository.atualizarSeries(db.streamDao().getAllSeries())
-        Log.d("SyncManager", "⚡ pacote inicial aplicado: ${pacote.vodArray.length()} filmes, ${pacote.seriesArray.length()} séries")
-        notificarOuvintes()
+        coroutineScope {
+            // ✅ CORRIGIDO (só algumas abas carregavam na hora): Top 10 / Top 10 Brasil /
+            // Novidades / selos só eram aplicados no FIM da sincronização (depois de baixar o
+            // catálogo COMPLETO), então essas fileiras ficavam vazias até lá. Agora o /home
+            // do backend é buscado em PARALELO com o pacote inicial e aplicado logo depois
+            // dele — o pacote já traz todos os itens que têm selo.
+            val homeJob = async {
+                try {
+                    HomeApiClient.buscarHome(dns)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            val pacote = HomeApiClient.buscarCatalogoInicial(dns)
+            if (pacote == null) {
+                homeJob.cancel()
+                return@coroutineScope
+            }
+            sincronizarVod(db, pacote.vodArray, palavrasProibidas, vodsExistentes)
+            sincronizarSeries(db, pacote.seriesArray, palavrasProibidas, seriesExistentes)
+
+            val home = try { homeJob.await() } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+            if (home != null && homeTemDados(home)) {
+                try {
+                    HomeBackendSync.aplicar(db, home)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+            // Recarrega a memória a partir do Room (ainda pequeno: poucas centenas de itens),
+            // já com as marcas de Top10/Novidades, pra TODAS as categorias/fileiras aparecerem.
+            ContentRepository.atualizarVods(db.streamDao().getAllVods())
+            ContentRepository.atualizarSeries(db.streamDao().getAllSeries())
+            Log.d("SyncManager", "⚡ pacote inicial aplicado: ${pacote.vodArray.length()} filmes, ${pacote.seriesArray.length()} séries (home do backend: ${if (home != null && homeTemDados(home)) "aplicada" else "sem dados"})")
+            notificarOuvintes()
+        }
     }
+
+    private fun homeTemDados(h: HomeApiClient.HomeCatalogo): Boolean =
+        h.top10FilmesRank.isNotEmpty() || h.top10SeriesRank.isNotEmpty() ||
+        h.top10FilmesBrasilRank.isNotEmpty() || h.top10SeriesBrasilRank.isNotEmpty() ||
+        h.novidadeFilmesData.isNotEmpty() || h.novidadeSeriesData.isNotEmpty()
 
     private fun baixarJsonXtream(dns: String, user: String, pass: String, action: String): String {
         val base = dns.trim().removeSuffix("/")
@@ -773,8 +825,11 @@ object SyncManager {
         }
         if (vodBatch.isNotEmpty()) db.streamDao().insertVodStreams(vodBatch)
 
-        val vodsAtualizados = db.streamDao().getRecentVods(200)
-        ContentRepository.atualizarVods(vodsAtualizados)
+        // ✅ CORRIGIDO (abas com só 1-2 filmes até o fim da sincronização): aqui a memória
+        // (ContentRepository) era trocada pelos 200 filmes mais recentes — isso esvaziava
+        // quase todas as categorias das abas de Filmes até a sincronização terminar.
+        // Quem chama já atualiza a memória com a lista COMPLETA (aplicarPacoteInicial e
+        // executarSincronizacao), então este encolhimento intermediário foi removido.
         todosVods
     }
 
@@ -833,8 +888,8 @@ object SyncManager {
         }
         if (seriesBatch.isNotEmpty()) db.streamDao().insertSeriesStreams(seriesBatch)
 
-        val seriesAtualizadas = db.streamDao().getRecentSeries(200)
-        ContentRepository.atualizarSeries(seriesAtualizadas)
+        // ✅ CORRIGIDO: mesma correção do sincronizarVod — não encolhe mais a memória
+        // pras 200 séries mais recentes no meio da sincronização.
         todasSeries
     }
 
