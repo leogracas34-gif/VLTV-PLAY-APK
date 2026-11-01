@@ -92,6 +92,13 @@ class LoginActivity : AppCompatActivity() {
     // Código do painel devolvido pelo gateway no login (nunca é DNS real).
     @Volatile private var painelDetectado: String? = null
 
+    // Por que o último teste de login falhou: "negado" (o gateway respondeu e não
+    // reconheceu o login), "http" (erro do servidor: 4xx/5xx) ou "rede" (sem resposta /
+    // tempo esgotado). Serve para mostrar a mensagem certa e para não repetir à toa
+    // um teste que o gateway já negou.
+    @Volatile private var motivoFalha: String? = null
+    @Volatile private var codigoHttpFalha: Int = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // ✅ REMOVIDO: installSplashScreen() saiu daqui. A LoginActivity não
         // é mais a porta de entrada do app — quem cobre esse papel agora é
@@ -292,8 +299,11 @@ class LoginActivity : AppCompatActivity() {
         binding.root.visibility = View.VISIBLE
 
         // Botão com foco: no controle remoto (TV) dá pra descer até ele e dar OK.
+        // ⚠️ NÃO usar isFocusableInTouchMode = true aqui: no celular o 1º toque só passa o foco
+        // para o botão e o clique só acontece no 2º toque (era o "preciso tocar 2 vezes em Entrar").
+        // Com isFocusable = true o D-pad da TV continua chegando no botão e o toque já clica de primeira.
         binding.btnLogin.isFocusable = true
-        binding.btnLogin.isFocusableInTouchMode = true
+        binding.btnLogin.isFocusableInTouchMode = false
 
         // Teclado: "próximo" anda pelos campos e "ok" no último dispara o Entrar.
         binding.etServidor.setOnEditorActionListener { _, actionId, _ ->
@@ -616,6 +626,8 @@ class LoginActivity : AppCompatActivity() {
             contaExpiradaDetectada = false
             contaExpiradaEhTeste = false
             painelDetectado = null
+            motivoFalha = null
+            codigoHttpFalha = 0
 
             // ✅ NOVO: garante a lista de DNS mais recente da VPS antes de
             // testar os servidores (não baixa de novo se já baixou há
@@ -654,7 +666,21 @@ class LoginActivity : AppCompatActivity() {
             // usa mais.
             // ✅ Se algum servidor já confirmou que a conta expirou, pula
             // o fallback — não adianta insistir.
-            if (dnsVencedor == null && !contaExpiradaDetectada) {
+            // Login recém-autorizado na VPS: o gateway pode ainda estar ligando o login ao DNS de
+            // origem e negar a primeira tentativa. Uma segunda tentativa rápida resolve sem o
+            // cliente precisar tocar em "Entrar" de novo.
+            if (dnsVencedor == null && !contaExpiradaDetectada && motivoFalha == "negado") {
+                delay(2000L)
+                for (servidor in servidores) {
+                    val r = testarServidor(servidor, user, pass, clientRapido)
+                    if (r != null) { dnsVencedor = r; break }
+                    if (contaExpiradaDetectada) break
+                }
+            }
+
+            // O fallback mais lento só vale quando o problema foi de rede/servidor. Se o gateway
+            // respondeu e negou o login, repetir com mais tempo só faz a tela ficar girando.
+            if (dnsVencedor == null && !contaExpiradaDetectada && motivoFalha != "negado") {
                 for (servidor in servidores) {
                     // ✅ CORREÇÃO: sai do loop assim que a expiração é
                     // confirmada, em vez de continuar testando os servidores
@@ -719,7 +745,12 @@ class LoginActivity : AppCompatActivity() {
                     if (expirada) {
                         abrirTelaExpirado(ehTeste)
                     } else {
-                        mostrarErro("Servidor não encontrado. Verifique login e senha.")
+                        mostrarErro(when (motivoFalha) {
+                            "negado" -> "Login ou senha não reconhecidos. Confira os dados ou fale com o seu provedor."
+                            "http" -> "Servidor indisponível no momento (erro $codigoHttpFalha). Tente novamente em instantes."
+                            "rede" -> "Sem conexão com o servidor. Verifique a internet e tente novamente."
+                            else -> "Servidor não encontrado. Verifique login e senha."
+                        })
                     }
                 }
             }
@@ -861,13 +892,22 @@ class LoginActivity : AppCompatActivity() {
                     if (valido) {
                         urlBase
                     } else {
+                        // Respondeu, mas não reconheceu o login (ou a conta está bloqueada/vencida).
+                        motivoFalha = "negado"
                         null
                     }
                 } else {
+                    if (response.code == 401 || response.code == 403) {
+                        motivoFalha = "negado"          // o gateway recusou este login
+                    } else if (motivoFalha != "negado") {
+                        motivoFalha = "http"
+                        codigoHttpFalha = response.code
+                    }
                     null
                 }
             }
         } catch (e: Exception) {
+            if (motivoFalha == null) motivoFalha = "rede"
             null
         }
     }

@@ -56,6 +56,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -584,6 +585,7 @@ class HomeActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch(Dispatchers.Default) {
+            assinaturaTop10Home = try { calcularAssinaturaTop10() } catch (e: Exception) { null }
             // ✅ CORRIGIDO (Home vazia por ~5s ao reabrir o app): antes, TODO
             // o catálogo (17 mil+ filmes e 8 mil+ séries) era convertido em
             // VodItem aqui — cada conversão roda a limpeza de nome (várias
@@ -604,6 +606,52 @@ class HomeActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
                 agendarPopularSections(movieItems, seriesItems, localMovies, localSeries)
+            }
+        }
+    }
+
+    // ── Atualização silenciosa da Home ─────────────────────────────────────────
+    // Na 1ª entrada a Home abre com o pouco que já está no aparelho; o Top 10 e as Novidades
+    // chegam do servidor/sincronização alguns instantes depois. Esta vigia confere (consulta
+    // minúscula no banco) se o Top 10 mudou desde que a tela foi desenhada e, se mudou, redesenha
+    // sozinha — sem precisar fechar e abrir o app.
+    @Volatile private var assinaturaTop10Home: String? = null
+    private var vigiaAtualizacaoJob: kotlinx.coroutines.Job? = null
+
+    private suspend fun calcularAssinaturaTop10(): String {
+        val dao = database.streamDao()
+        val filmes = dao.getTop10Vods().joinToString(",") { it.stream_id.toString() }
+        val series = dao.getTop10Series().joinToString(",") { it.series_id.toString() }
+        return "$filmes|$series"
+    }
+
+    private fun iniciarVigiaAtualizacaoSilenciosa() {
+        vigiaAtualizacaoJob?.cancel()
+        vigiaAtualizacaoJob = lifecycleScope.launch(Dispatchers.IO) {
+            var rodadas = 0
+            while (isActive && rodadas < 40) {
+                // 1ª conferência logo ao voltar para a Home; depois a cada 6 s por ~4 min
+                // (tempo de a sincronização da 1ª entrada terminar).
+                if (rodadas > 0) delay(6_000L)
+                rodadas++
+                try {
+                    val atual = calcularAssinaturaTop10()
+                    val anterior = assinaturaTop10Home
+                    if (anterior != null && anterior != atual) {
+                        assinaturaTop10Home = atual
+                        // Traz do banco as marcas novas (Top 10, Novidades) para a memória e redesenha.
+                        val dao = database.streamDao()
+                        val vods = dao.getAllVods()
+                        val series = dao.getAllSeries()
+                        if (vods.isNotEmpty()) ContentRepository.atualizarVods(vods)
+                        if (series.isNotEmpty()) ContentRepository.atualizarSeries(series)
+                        withContext(Dispatchers.Main) {
+                            if (!isFinishing && !isDestroyed) popularTelaDoRepositorio()
+                        }
+                    }
+                } catch (e: Exception) {
+                    // silencioso: tenta de novo na próxima rodada
+                }
             }
         }
     }
@@ -2806,12 +2854,14 @@ class HomeActivity : AppCompatActivity() {
 
             carregarContinuarAssistindoLocal()
             setupBottomNavigation()
+            iniciarVigiaAtualizacaoSilenciosa()
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
 
     override fun onPause() {
+        vigiaAtualizacaoJob?.cancel()
         pararVigiaDestaque()
         super.onPause()
         bannerHandler.removeCallbacksAndMessages(null)
