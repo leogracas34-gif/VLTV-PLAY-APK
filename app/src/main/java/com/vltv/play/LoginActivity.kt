@@ -721,8 +721,14 @@ class LoginActivity : AppCompatActivity() {
                 ContentRepository.recarregar(applicationContext)
 
                 // Pré-carrega lote mínimo no banco em paralelo (sem bloquear navegação)
-                launch(Dispatchers.IO) {
+                // ✅ CORRIGIDO: antes rodava no escopo desta tela, que é cancelado assim que
+                // ela fecha (finish() logo abaixo) — o pré-carregamento podia morrer no meio.
+                // Agora roda num escopo próprio e, logo depois do lote mínimo, baixa o PACOTE
+                // INICIAL da VPS (Top 10/Novidades/categorias) enquanto o cliente ainda está
+                // na tela de perfis — a Home já abre com as fileiras cheias.
+                CoroutineScope(Dispatchers.IO).launch {
                     preCarregarLoteMinimo(dnsFinal, user, pass)
+                    SyncManager.preCarregarPacoteInicial(applicationContext)
                 }
 
                 withContext(Dispatchers.Main) {
