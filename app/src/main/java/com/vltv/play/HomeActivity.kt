@@ -364,6 +364,13 @@ class HomeActivity : AppCompatActivity() {
             removerOuvinteSync = SyncManager.registrarOuvinteNovidade {
                 if (!isFinishing && !isDestroyed) {
                     popularTelaDoRepositorio()
+                    // ✅ O catálogo acabou de chegar ao banco: se o destaque ainda não foi achado, tenta agora.
+                    val dest = destaqueAplicado
+                    val cardDest = binding.cardFeaturedBanner
+                    if (dest != null && cardDest != null && !featuredBannerEncontrado) {
+                        ultimaBuscaDestaqueMs = 0L
+                        tentarAcharDestaqueDeNovo(cardDest, dest)
+                    }
                 }
             }
             SyncManager.sincronizarSeNecessario(applicationContext)
@@ -2492,6 +2499,21 @@ class HomeActivity : AppCompatActivity() {
         vigiaDestaqueJob = null
     }
     private var idDestaque = 0
+    private var ultimaBuscaDestaqueMs = 0L
+    private var tentativasBuscaDestaque = 0
+
+    // ✅ NOVO: repete a busca do título do destaque na lista da conta enquanto ele não for achado.
+    // Na 1ª abertura o banco ainda está vazio/incompleto (o catálogo está sendo baixado), então a
+    // primeira busca falha; sem repetir, o card só aparecia nas aberturas seguintes.
+    private fun tentarAcharDestaqueDeNovo(card: View, d: DestaqueVps) {
+        if (featuredBannerEncontrado) return
+        if (tentativasBuscaDestaque >= 60) return
+        val agora = System.currentTimeMillis()
+        if (agora - ultimaBuscaDestaqueMs < 4_000L) return
+        ultimaBuscaDestaqueMs = agora
+        tentativasBuscaDestaque++
+        buscarIdFeaturedBanner(card, d.nome, d.isSeries, "")
+    }
 
     private fun destaqueDoJson(j: JSONObject): DestaqueVps {
         val ativoTxt = j.optString("destaque_ativo", "").trim().lowercase()
@@ -2554,10 +2576,17 @@ class HomeActivity : AppCompatActivity() {
 
         // Nada mudou desde a última vez: não mexe (evita piscar).
         if (d == destaqueAplicado) {
-            if (featuredBannerEncontrado) card.visibility = View.VISIBLE
+            if (featuredBannerEncontrado) {
+                card.visibility = View.VISIBLE
+            } else {
+                // ✅ CORRIGIDO: se o título ainda não tinha sido achado (1ª abertura: o catálogo
+                // ainda estava sendo gravado no banco), tenta de novo em vez de desistir.
+                tentarAcharDestaqueDeNovo(card, d)
+            }
             return
         }
         destaqueAplicado = d
+        tentativasBuscaDestaque = 0
         ultimoFeaturedTitleAplicado = null
         featuredBannerEncontrado = false
         val meuId = ++idDestaque
