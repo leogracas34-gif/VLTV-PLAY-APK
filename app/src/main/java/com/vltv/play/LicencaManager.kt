@@ -42,7 +42,8 @@ object LicencaManager {
         val dias: Int = 0,
         val expiraEm: Long = 0L,     // epoch em segundos
         val pagarUrl: String = "",
-        val texto: String = ""       // mensagem quando estado = erro
+        val texto: String = "",      // mensagem quando estado = erro
+        val liberado: Boolean = false // login cadastrado no painel (aba Usuário): "Ativo", como o parceiro
     )
 
     private const val PREFS = "vltv_licenca"
@@ -128,7 +129,8 @@ object LicencaManager {
             codigo = j.optString("codigo"),
             dias = j.optInt("dias", 0),
             expiraEm = exp,
-            pagarUrl = j.optString("pagar_url")
+            pagarUrl = j.optString("pagar_url"),
+            liberado = j.optBoolean("liberado", false)
         )
     }
 
@@ -137,6 +139,7 @@ object LicencaManager {
         val eJson = JSONObject()
             .put("estado", e.estado).put("vitalicio", e.vitalicio).put("codigo", e.codigo)
             .put("dias", e.dias).put("expira_em", e.expiraEm).put("pagar_url", e.pagarUrl)
+            .put("liberado", e.liberado)
         val cache = JSONObject().put("e", eJson).put("token", token)
             .put("id", deviceId(ctx)).put("em", agoraS())
         prefs(ctx).edit().putString("cache", cache.toString()).apply()
@@ -179,7 +182,15 @@ object LicencaManager {
      * trial | active | expired | blocked | erro.
      * Sem internet, cai no último estado válido (até 3 dias).
      */
-    suspend fun verificar(ctx: Context, loginInformado: String = "", parceiroForcado: String? = null): Estado = withContext(Dispatchers.IO) {
+    suspend fun verificar(
+        ctx: Context,
+        loginInformado: String = "",
+        parceiroForcado: String? = null,
+        // loginTentativa/modoTentativa: o login que está TENTANDO entrar agora (ainda não confirmado). A VPS responde por ele
+        // (login cadastrado no painel = "Ativo"), mas nada disso é guardado: se a entrada falhar, o aparelho não ganha licença.
+        loginTentativa: String? = null,
+        modoTentativa: String? = null
+    ): Estado = withContext(Dispatchers.IO) {
         val app = ctx.applicationContext
         val id = deviceId(app)
         // parceiroForcado (igual à LG): "" = "a lista que vai entrar NÃO é de parceiro" — confere a licença
@@ -187,9 +198,11 @@ object LicencaManager {
         val parceiro = (parceiroForcado ?: prefs(app).getString("parceiro", "") ?: "").uppercase()
         // Login (só o usuário, nunca a senha) e modo seguem junto em toda consulta, para o painel mostrar
         // quem está usando este aparelho. Fica guardado (como a LG) para as consultas sem login explícito.
-        if (loginInformado.isNotBlank()) prefs(app).edit().putString("login", loginInformado).apply()
-        val login = loginInformado.ifBlank { prefs(app).getString("login", "") ?: "" }
-        val modo = XtreamApi.modoLogin(app)
+        val tentando = loginTentativa != null
+        if (!tentando && loginInformado.isNotBlank()) prefs(app).edit().putString("login", loginInformado).apply()
+        val login = if (tentando) loginTentativa.orEmpty() else loginInformado.ifBlank { prefs(app).getString("login", "") ?: "" }
+        val modo = if (tentando) (modoTentativa ?: XtreamApi.modoLogin(app)) else XtreamApi.modoLogin(app)
+        fun guardarOuSo(j: JSONObject, token: String): Estado = if (tentando) paraEstado(j) else guardar(app, j, token)
         val cache = lerCache(app)
 
         fun offline(): Estado {
@@ -212,7 +225,7 @@ object LicencaManager {
                     .put("login", login).put("modo", modo)
                 val r = chamar("POST", "/lg/register", corpo, null)
                 if (r.status == 200 && r.json.optString("estado").isNotBlank()) {
-                    guardar(app, r.json, r.json.optString("token"))
+                    guardarOuSo(r.json, r.json.optString("token"))
                 } else if (r.status >= 500 || r.status == 0) offline()
                 else Estado(estado = "erro", texto = r.json.optString("error"))
             } catch (e: Exception) { offline() }
@@ -226,7 +239,7 @@ object LicencaManager {
                 val r = chamar("GET", "/lg/status$q", null, cache.second)
                 when {
                     r.status == 200 && r.json.optString("estado").isNotBlank() ->
-                        guardar(app, r.json, r.json.optString("token").ifBlank { cache.second })
+                        guardarOuSo(r.json, r.json.optString("token").ifBlank { cache.second })
                     r.status == 401 || r.status == 404 -> registrar()   // token vencido: se apresenta de novo
                     else -> offline()
                 }
@@ -246,6 +259,7 @@ object LicencaManager {
     fun textoCurto(ctx: Context): String {
         if (ehParceiro(ctx)) return "Ativo"
         val e = estadoSalvo(ctx) ?: return ""
+        if (e.liberado && e.estado == "active") return "Ativo"
         return when {
             e.estado == "active" ->
                 if (e.vitalicio) "Vitalícia (sem vencimento)" else "Ativa até " + dataBr(e.expiraEm)
@@ -261,6 +275,7 @@ object LicencaManager {
     fun tipoCurto(ctx: Context): String {
         if (ehParceiro(ctx)) return "Parceiro"
         val e = estadoSalvo(ctx) ?: return ""
+        if (e.liberado && e.estado == "active") return "Ativo"
         return when {
             e.estado == "trial" -> "Teste"
             e.estado == "active" && e.vitalicio -> "Vitalícia"
@@ -300,6 +315,10 @@ object LicencaManager {
         if (e == null) {
             return Resumo("Verificando licença...", "", "", ambar, codigo, "Conecte à internet para ver o código do aplicativo.")
         }
+        if (e.liberado && e.estado == "active") {
+            return Resumo("Licença ativa", "Acesso liberado pelo seu provedor", "ATIVA", verde, codigo,
+                "Se precisar de suporte, informe este código.")
+        }
         return when (e.estado) {
             "active" ->
                 if (e.vitalicio) Resumo("Licença vitalícia", "Sem vencimento", "VITALÍCIA", verde, codigo,
@@ -330,7 +349,7 @@ object LicencaManager {
         fun quando(d: Long) = when (d) { 0L -> "hoje"; 1L -> "amanhã"; else -> "em $d dias" }
 
         val e = estadoSalvo(ctx)
-        if (e != null && !ehParceiro(ctx) && !e.vitalicio && e.expiraEm > 0 &&
+        if (e != null && !ehParceiro(ctx) && !e.liberado && !e.vitalicio && e.expiraEm > 0 &&
             (e.estado == "trial" || e.estado == "active")) {
             val d = diasAte(e.expiraEm).toLong()
             if (d in 0..AVISO_HOME_DIAS.toLong()) {
@@ -354,7 +373,7 @@ object LicencaManager {
     fun avisos(ctx: Context, diasPlano: Long?, limite: Int = AVISO_VENCIMENTO_DIAS): List<String> {
         val lista = mutableListOf<String>()
         val e = estadoSalvo(ctx)
-        if (e != null && !ehParceiro(ctx) && !e.vitalicio && e.expiraEm > 0 &&
+        if (e != null && !ehParceiro(ctx) && !e.liberado && !e.vitalicio && e.expiraEm > 0 &&
             (e.estado == "trial" || e.estado == "active")) {
             val d = Math.ceil((e.expiraEm * 1000.0 - System.currentTimeMillis()) / 86400000.0).toInt()
             if (d in 0..limite) {

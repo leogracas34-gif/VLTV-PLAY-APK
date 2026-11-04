@@ -341,7 +341,7 @@ class LoginActivity : AppCompatActivity() {
                     if (user.isEmpty() || pass.isEmpty()) {
                         mostrarStatus("Preencha usuário e senha.", erro = true)
                     } else {
-                        comLicencaParaListaComum {
+                        comLicencaParaListaComum(user, XtreamApi.MODO_USUARIO) {
                             // ✅ Mesmo fluxo de antes (gateway da VPS).
                             LicencaManager.limparParceiro(this)
                             iniciarLoginTurbo(user, pass)
@@ -769,7 +769,7 @@ class LoginActivity : AppCompatActivity() {
     private fun iniciarLoginXtream(servidor: String, user: String, pass: String) {
         val pareceEndereco = servidor.contains("://") || servidor.contains(".") || servidor.contains(":")
         if (pareceEndereco) {
-            comLicencaParaListaComum {
+            comLicencaParaListaComum(user, XtreamApi.MODO_XTREAM) {
                 iniciarLoginTurbo(user, pass, listOf(normalizarBaseUrl(servidor)), XtreamApi.MODO_XTREAM)
             }
             return
@@ -825,11 +825,22 @@ class LoginActivity : AppCompatActivity() {
     // Se não vale, abre a tela de ativação e NÃO executa o login.
     // Se o aparelho vinha de uma lista de parceiro, o estado guardado é o "Ativo" do parceiro e
     // não vale para a lista comum: confere a licença REAL na VPS (igual ao verificar('') da LG).
-    private fun comLicencaParaListaComum(entrar: () -> Unit) {
+    private fun comLicencaParaListaComum(user: String, modo: String, entrar: () -> Unit) {
+        // Login cadastrado no painel (aba Usuário) libera o app: a VPS é consultada com o login que está entrando agora,
+        // ANTES de mandar para a ativação (o cliente pode ter um teste vencido e acabado de receber o login).
+        // Nada disso é guardado se a entrada falhar (ver loginTentativa em LicencaManager.verificar).
         if (!LicencaManager.ehParceiro(this)) {
             val e = LicencaManager.estadoSalvo(this)   // sem dado: a Splash já conferiu
             if (e != null && (e.estado == "expired" || e.estado == "blocked")) {
-                startActivity(Intent(this, AtivacaoActivity::class.java))
+                mostrarLoading()
+                lifecycleScope.launch {
+                    val lic = LicencaManager.verificar(
+                        this@LoginActivity, parceiroForcado = "", loginTentativa = user, modoTentativa = modo
+                    )
+                    esconderLoading()
+                    if (lic.estado == "active") entrar()
+                    else startActivity(Intent(this@LoginActivity, AtivacaoActivity::class.java))
+                }
                 return
             }
             entrar()
@@ -837,7 +848,9 @@ class LoginActivity : AppCompatActivity() {
         }
         mostrarLoading()
         lifecycleScope.launch {
-            val lic = LicencaManager.verificar(this@LoginActivity, parceiroForcado = "")
+            val lic = LicencaManager.verificar(
+                this@LoginActivity, parceiroForcado = "", loginTentativa = user, modoTentativa = modo
+            )
             esconderLoading()
             if (lic.estado == "expired" || lic.estado == "blocked") {
                 startActivity(Intent(this@LoginActivity, AtivacaoActivity::class.java))
