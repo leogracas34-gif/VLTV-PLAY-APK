@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Divisor entre linhas do mesmo grupo (recuado na esquerda, estilo lista iOS/Material). -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="16dp">
+    <shape android:shape="rectangle">
+        <size android:height="1dp" />
+        <solid android:color="#14FFFFFF" />
+    </shape>
+</inset>

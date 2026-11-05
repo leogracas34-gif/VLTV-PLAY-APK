@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Feedback da linha: toque (celular) e foco do controle remoto (TV). Sem fundo quando parada. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true"><shape><solid android:color="#14FFFFFF" /></shape></item>
+    <item android:state_focused="true"><shape><solid android:color="#22FFFFFF" /></shape></item>
+    <item><shape><solid android:color="#00000000" /></shape></item>
+</selector>
