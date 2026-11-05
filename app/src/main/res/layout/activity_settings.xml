@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configurações — versão "limpa".
+  Antes: um cartão com borda para CADA item + quadradinho colorido com emoji em cada um.
+  Agora: um grupo (cartão) por seção, linhas separadas por divisor fino, sem emojis coloridos.
+  TODOS os ids foram mantidos, então o SettingsActivity continua funcionando igual.
+  Os itens injetados pelo Kotlin entram DENTRO dos grupos (mesmo container-pai dos âncoras):
+    - Suporte e Perguntas Frequentes: logo abaixo de cardAbout   (grupo APLICATIVO)
+    - PIN de Perfis:                  logo abaixo de cardParental (grupo SEGURANÇA)
+    - Meu Acesso:                     logo acima de cardTrocarLogin (grupo CONTA)
+-->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -55,7 +65,6 @@
         android:overScrollMode="never"
         android:fillViewport="true">
 
-        <!-- Coluna central com largura máxima -->
         <LinearLayout
             android:layout_width="820dp"
             android:layout_height="wrap_content"
@@ -63,181 +72,172 @@
             android:orientation="vertical"
             android:paddingBottom="48dp">
 
-            <!-- PERFIS -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="PERFIS"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
+                android:textColor="#6A6A78"
+                android:textSize="11sp"
+                android:letterSpacing="0.12"
                 android:textStyle="bold"
+                android:paddingHorizontal="4dp"
                 android:paddingTop="20dp"
-                android:paddingBottom="10dp"/>
+                android:paddingBottom="8dp"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvProfilesSettings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:paddingHorizontal="0dp"
                 android:clipToPadding="false"
                 android:orientation="horizontal"/>
 
-            <!-- ASSINATURA -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="ASSINATURA"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
+                android:textColor="#6A6A78"
+                android:textSize="11sp"
+                android:letterSpacing="0.12"
                 android:textStyle="bold"
+                android:paddingHorizontal="4dp"
                 android:paddingTop="26dp"
-                android:paddingBottom="10dp"/>
+                android:paddingBottom="8dp"/>
 
             <LinearLayout
-                android:id="@+id/cardPlano"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@drawable/bg_card_settings"
-                android:layout_marginBottom="10dp"
-                android:padding="20dp">
+                android:background="@drawable/bg_settings_group"
+                android:layout_marginHorizontal="0dp"
+                android:clipToOutline="true"
+                android:divider="@drawable/divider_settings"
+                android:showDividers="middle">
 
+                <!-- Plano do cliente (nome, validade, barra fina, status) -->
                 <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:id="@+id/tvPlanoIcone"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
-                        android:text="⭐"
-                        android:textSize="22sp"
-                        android:gravity="center"
-                        android:background="@drawable/bg_input_round"/>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical"
-                        android:layout_marginStart="14dp">
-
-                        <TextView
-                            android:id="@+id/tvNomePlano"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Carregando..."
-                            android:textColor="#FFFFFF"
-                            android:textSize="16sp"
-                            android:textStyle="bold"/>
-
-                        <TextView
-                            android:id="@+id/tvValidadePlano"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Sincronizando com o servidor..."
-                            android:textColor="#888888"
-                            android:textSize="13sp"/>
-
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvPlanoBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="..."
-                        android:textColor="#000000"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="5dp"
-                        android:background="@drawable/bg_badge_round"
-                        android:visibility="gone"/>
-
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/layoutProgressoPlano"
+                    android:id="@+id/cardPlano"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:layout_marginTop="16dp"
-                    android:visibility="gone">
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#1AFFFFFF"
-                        android:layout_marginBottom="14dp"/>
+                    android:padding="16dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
+                        android:gravity="center_vertical">
 
+                        <!-- Emoji do plano: mantido (o Kotlin ainda escreve nele), mas escondido para não poluir. -->
                         <TextView
-                            android:id="@+id/tvDiasRestantes"
+                            android:id="@+id/tvPlanoIcone"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⭐"
+                            android:visibility="gone"/>
+
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="— dias restantes"
-                            android:textColor="#AAAAAA"
-                            android:textSize="12sp"/>
+                            android:orientation="vertical">
 
+                            <TextView
+                                android:id="@+id/tvNomePlano"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Carregando..."
+                                android:textColor="#FFFFFF"
+                                android:textSize="16sp"
+                                android:textStyle="bold"/>
+
+                            <TextView
+                                android:id="@+id/tvValidadePlano"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Sincronizando com o servidor..."
+                                android:textColor="#7C7C8A"
+                                android:textSize="12sp"/>
+
+                        </LinearLayout>
+
+                        <!-- Selo: o Kotlin só mostra quando é EXPIRADO ou VITALÍCIO (nos outros casos repetia o nome do plano). -->
                         <TextView
-                            android:id="@+id/tvDataExpiracao"
+                            android:id="@+id/tvPlanoBadge"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text=""
-                            android:textColor="#7C7C8A"
-                            android:textSize="12sp"/>
+                            android:text="..."
+                            android:textColor="#000000"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="4dp"
+                            android:background="@drawable/bg_badge_round"
+                            android:visibility="gone"/>
 
                     </LinearLayout>
 
-                    <ProgressBar
-                        android:id="@+id/progressPlano"
-                        style="?android:attr/progressBarStyleHorizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="6dp"
-                        android:max="100"
-                        android:progress="70"
-                        android:progressTint="#4CAF50"
-                        android:progressBackgroundTint="#222222"/>
-
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/layoutInfoExtra"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_marginTop="12dp"
-                    android:visibility="gone">
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#1AFFFFFF"
-                        android:layout_marginBottom="12dp"/>
-
+                    <!-- Barra fina de validade (o Kotlin esconde para vitalício/expirado) -->
                     <LinearLayout
+                        android:id="@+id/layoutProgressoPlano"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:orientation="vertical"
+                        android:layout_marginTop="12dp"
+                        android:visibility="gone">
+
+                        <!-- Rótulos escondidos: "dias restantes" e a data já aparecem na linha de validade acima. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:id="@+id/tvDiasRestantes"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text=""
+                                android:textSize="11sp"/>
+
+                            <TextView
+                                android:id="@+id/tvDataExpiracao"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text=""
+                                android:textSize="11sp"/>
+
+                        </LinearLayout>
+
+                        <ProgressBar
+                            android:id="@+id/progressPlano"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="4dp"
+                            android:max="100"
+                            android:progress="70"
+                            android:progressTint="#4CAF50"
+                            android:progressBackgroundTint="#26FFFFFF"/>
+
+                    </LinearLayout>
+
+                    <!-- Só o status da conta. O usuário já aparece em "Meu Acesso" e "Trocar Credenciais". -->
+                    <LinearLayout
+                        android:id="@+id/layoutInfoExtra"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="10dp"
+                        android:visibility="gone">
 
                         <TextView
                             android:id="@+id/tvUsuarioConta"
-                            android:layout_width="0dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Usuário: —"
-                            android:textColor="#7C7C8A"
-                            android:textSize="12sp"/>
+                            android:text=""
+                            android:visibility="gone"/>
 
                         <TextView
                             android:id="@+id/tvStatusConta"
@@ -251,178 +251,242 @@
 
                 </LinearLayout>
 
-            </LinearLayout>
-
-            <!-- ── Seção Licença do aplicativo (igual à LG: status + código para ativar) ── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="LICENÇA DO APLICATIVO"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
-                android:textStyle="bold"
-                android:paddingTop="26dp"
-                android:paddingBottom="10dp"/>
-
-            <LinearLayout
-                android:id="@+id/cardLicencaApp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card_settings"
-                android:layout_marginBottom="10dp"
-                android:padding="20dp">
-
+                <!-- Licença do aplicativo (status colorido + código para ativar) -->
                 <LinearLayout
+                    android:id="@+id/cardLicencaApp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:text="LICENÇA DO APLICATIVO"
+                        android:textColor="#6A6A78"
+                        android:textSize="10sp"
+                        android:letterSpacing="0.12"
+                        android:textStyle="bold"/>
 
-                        <TextView
-                            android:id="@+id/tvLicStatus"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Verificando licença..."
-                            android:textColor="#FFFFFF"
-                            android:textSize="16sp"
-                            android:textStyle="bold"/>
+                    <!-- A cor do status vem do Kotlin (verde/âmbar/vermelho); o selo foi removido porque repetia o título. -->
+                    <TextView
+                        android:id="@+id/tvLicStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Verificando licença..."
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:textStyle="bold"/>
 
-                        <TextView
-                            android:id="@+id/tvLicDetalhe"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text=""
-                            android:textColor="#888888"
-                            android:textSize="13sp"
-                            android:visibility="gone"/>
-
-                    </LinearLayout>
+                    <TextView
+                        android:id="@+id/tvLicDetalhe"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text=""
+                        android:textColor="#7C7C8A"
+                        android:textSize="12sp"
+                        android:visibility="gone"/>
 
                     <TextView
                         android:id="@+id/tvLicBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
                         android:text=""
-                        android:textColor="#000000"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="12dp"
-                        android:paddingVertical="5dp"
                         android:background="@drawable/bg_badge_round"
+                        android:visibility="gone"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="14dp">
+
+                        <TextView
+                            android:id="@+id/tvLicCodigo"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="--------"
+                            android:textColor="#FFFFFF"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace"
+                            android:letterSpacing="0.12"
+                            android:maxLines="1"/>
+
+                        <TextView
+                            android:id="@+id/btnLicCopiar"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Copiar"
+                            android:textColor="#FFFFFF"
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="9dp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:background="@drawable/bg_input_round"/>
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvLicAjuda"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text=""
+                        android:textColor="#7C7C8A"
+                        android:textSize="12sp"
                         android:visibility="gone"/>
 
                 </LinearLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#1AFFFFFF"
-                    android:layout_marginTop="14dp"
-                    android:layout_marginBottom="14dp"/>
+            </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="CÓDIGO DO APLICATIVO"
-                    android:textColor="#888888"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.1"
-                    android:textStyle="bold"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SEGURANÇA"
+                android:textColor="#6A6A78"
+                android:textSize="11sp"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:paddingHorizontal="4dp"
+                android:paddingTop="26dp"
+                android:paddingBottom="8dp"/>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_settings_group"
+                android:layout_marginHorizontal="0dp"
+                android:clipToOutline="true"
+                android:divider="@drawable/divider_settings"
+                android:showDividers="middle">
+
+                <!-- Controle Parental (o PIN de Perfis é injetado pelo Kotlin logo abaixo) -->
                 <LinearLayout
+                    android:id="@+id/cardParental"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Controle Parental"
+                                android:textColor="#FFFFFF"
+                                android:textSize="15sp"
+                                android:fontFamily="sans-serif-medium"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="Bloqueia conteúdo adulto e requer PIN"
+                                android:textColor="#7C7C8A"
+                                android:textSize="12sp"/>
+
+                        </LinearLayout>
+
+                        <Switch
+                            android:id="@+id/switchParental"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:thumbTint="#FFFFFF"
+                            android:trackTint="@color/settings_switch_track"/>
+
+                    </LinearLayout>
+
+                    <!-- PIN — visível só quando ativo -->
+                    <LinearLayout
+                        android:id="@+id/layoutPin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="14dp"
+                        android:visibility="gone">
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#14FFFFFF"
+                            android:layout_marginBottom="12dp"/>
+
+                        <TextView
+                            android:id="@+id/tvPinSectionLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Segurança do PIN"
+                            android:textColor="#AAAAAA"
+                            android:textSize="12sp"
+                            android:layout_marginBottom="8dp"/>
+
+                        <!-- Conteúdo montado dinamicamente pelo Kotlin (renderPinSection): "Criar PIN" ou "Alterar PIN" / "Esqueci o PIN". -->
+                        <LinearLayout
+                            android:id="@+id/layoutPinDynamic"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"/>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="APLICATIVO"
+                android:textColor="#6A6A78"
+                android:textSize="11sp"
+                android:letterSpacing="0.12"
+                android:textStyle="bold"
+                android:paddingHorizontal="4dp"
+                android:paddingTop="26dp"
+                android:paddingBottom="8dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_settings_group"
+                android:layout_marginHorizontal="0dp"
+                android:clipToOutline="true"
+                android:divider="@drawable/divider_settings"
+                android:showDividers="middle">
+
+                <!-- Limpar Cache -->
+                <LinearLayout
+                    android:id="@+id/cardClearCache"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginTop="8dp">
-
-                    <TextView
-                        android:id="@+id/tvLicCodigo"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="--------"
-                        android:textColor="#FFFFFF"
-                        android:textSize="26sp"
-                        android:textStyle="bold"
-                        android:fontFamily="monospace"
-                        android:letterSpacing="0.12"
-                        android:maxLines="1"/>
-
-                    <TextView
-                        android:id="@+id/btnLicCopiar"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Copiar"
-                        android:textColor="#FFFFFF"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="9dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:background="@drawable/bg_input_round"/>
-
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tvLicAjuda"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:text=""
-                    android:textColor="#888888"
-                    android:textSize="12sp"
-                    android:visibility="gone"/>
-
-            </LinearLayout>
-
-            <!-- CONTA -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="CONTA"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
-                android:textStyle="bold"
-                android:paddingTop="26dp"
-                android:paddingBottom="10dp"/>
-
-            <LinearLayout
-                android:id="@+id/cardParental"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card_settings"
-                android:layout_marginBottom="10dp"
-                android:padding="20dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-                <TextView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="14dp"
-                    android:gravity="center"
-                    android:text="🔒"
-                    android:textSize="18sp"
-                    android:background="@drawable/bg_set_tile"
-                    android:backgroundTint="#337B61FF"/>
-
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -433,325 +497,197 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Controle Parental"
+                            android:text="Limpar Cache"
                             android:textColor="#FFFFFF"
-                            android:textSize="16sp"
-                            android:textStyle="bold"/>
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-medium"/>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Bloqueia conteúdo adulto e requer PIN"
-                            android:textColor="#888888"
-                            android:textSize="13sp"/>
+                            android:text="Remove imagens e dados temporários"
+                            android:textColor="#7C7C8A"
+                            android:textSize="12sp"/>
 
                     </LinearLayout>
 
-                    <Switch
-                        android:id="@+id/switchParental"
+                    <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:thumbTint="#FFFFFF"
-                        android:trackTint="#C1443B"
-                        android:focusable="true"/>
+                        android:text="›"
+                        android:textColor="#55555F"
+                        android:textSize="22sp"/>
 
                 </LinearLayout>
 
+                <!-- Sobre o Aplicativo -->
                 <LinearLayout
-                    android:id="@+id/layoutPin"
+                    android:id="@+id/cardAbout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_marginTop="16dp"
-                    android:visibility="gone">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="#1AFFFFFF"
-                        android:layout_marginBottom="14dp"/>
-
-                    <TextView
-                        android:id="@+id/tvPinSectionLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Segurança do PIN"
-                        android:textColor="#AAAAAA"
-                        android:textSize="13sp"
-                        android:layout_marginBottom="10dp"/>
-
-                    <!-- Montado dinamicamente pelo Kotlin (renderPinSection) -->
                     <LinearLayout
-                        android:id="@+id/layoutPinDynamic"
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"/>
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                </LinearLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sobre o Aplicativo"
+                            android:textColor="#FFFFFF"
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-medium"/>
 
-            </LinearLayout>
-
-            <!-- APLICATIVO -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="APLICATIVO"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
-                android:textStyle="bold"
-                android:paddingTop="26dp"
-                android:paddingBottom="10dp"/>
-
-            <LinearLayout
-                android:id="@+id/cardClearCache"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_card_settings"
-                android:layout_marginBottom="10dp"
-                android:padding="20dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:nextFocusDown="@id/cardAbout">
-                <TextView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="14dp"
-                    android:gravity="center"
-                    android:text="🧹"
-                    android:textSize="18sp"
-                    android:background="@drawable/bg_set_tile"
-                    android:backgroundTint="#334F8CFF"/>
-
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Limpar Cache"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:textStyle="bold"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Remove imagens e dados temporários"
-                        android:textColor="#888888"
-                        android:textSize="13sp"/>
-
-                </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="#6A6A78"
-                    android:textSize="24sp"/>
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/cardAbout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_card_settings"
-                android:layout_marginBottom="10dp"
-                android:padding="20dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:nextFocusUp="@id/cardClearCache"
-                android:nextFocusDown="@id/cardTrocarLogin">
-                <TextView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="14dp"
-                    android:gravity="center"
-                    android:text="ℹ️"
-                    android:textSize="18sp"
-                    android:background="@drawable/bg_set_tile"
-                    android:backgroundTint="#33A0A0B0"/>
-
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sobre o Aplicativo"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:textStyle="bold"/>
-
-                    <TextView
+                        <TextView
                         android:id="@+id/tvVersion"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Versão 1.0.0"
+                            android:textColor="#7C7C8A"
+                            android:textSize="12sp"/>
+
+                    </LinearLayout>
+
+                    <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Versão 1.0.0"
-                        android:textColor="#888888"
-                        android:textSize="13sp"/>
+                        android:text="›"
+                        android:textColor="#55555F"
+                        android:textSize="22sp"/>
 
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="#6A6A78"
-                    android:textSize="24sp"/>
+                <!-- Suporte e Perguntas Frequentes entram aqui (injetados pelo Kotlin) -->
 
             </LinearLayout>
 
-            <!-- CREDENCIAIS -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="CREDENCIAIS"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
+                android:text="CONTA"
+                android:textColor="#6A6A78"
+                android:textSize="11sp"
+                android:letterSpacing="0.12"
                 android:textStyle="bold"
+                android:paddingHorizontal="4dp"
                 android:paddingTop="26dp"
-                android:paddingBottom="10dp"/>
+                android:paddingBottom="8dp"/>
 
             <LinearLayout
-                android:id="@+id/cardTrocarLogin"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_card_settings"
-                android:layout_marginBottom="10dp"
-                android:padding="20dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:nextFocusUp="@id/cardAbout"
-                android:nextFocusDown="@id/cardLogout">
-                <TextView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="14dp"
-                    android:gravity="center"
-                    android:text="🔑"
-                    android:textSize="18sp"
-                    android:background="@drawable/bg_set_tile"
-                    android:backgroundTint="#33FFB020"/>
+                android:orientation="vertical"
+                android:background="@drawable/bg_settings_group"
+                android:layout_marginHorizontal="0dp"
+                android:clipToOutline="true"
+                android:divider="@drawable/divider_settings"
+                android:showDividers="middle">
 
+                <!-- Meu Acesso entra aqui, acima de Trocar Credenciais (injetado pelo Kotlin) -->
 
+                <!-- Trocar Credenciais -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:id="@+id/cardTrocarLogin"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Trocar Credenciais"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:textStyle="bold"/>
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                    <TextView
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Trocar Credenciais"
+                            android:textColor="#FFFFFF"
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
                         android:id="@+id/tvCredenciaisSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Alterar usuário, senha e servidor"
+                            android:textColor="#7C7C8A"
+                            android:textSize="12sp"/>
+
+                    </LinearLayout>
+
+                    <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Alterar usuário, senha e servidor"
-                        android:textColor="#888888"
-                        android:textSize="13sp"/>
+                        android:text="›"
+                        android:textColor="#55555F"
+                        android:textSize="22sp"/>
 
                 </LinearLayout>
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="#6A6A78"
-                    android:textSize="24sp"/>
-
-            </LinearLayout>
-
-            <!-- SESSÃO -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="SESSÃO"
-                android:textColor="#7C7C8A"
-                android:textSize="12sp"
-                android:letterSpacing="0.15"
-                android:textStyle="bold"
-                android:paddingTop="26dp"
-                android:paddingBottom="10dp"/>
-
-            <LinearLayout
-                android:id="@+id/cardLogout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_card_settings"
-                android:padding="20dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:nextFocusUp="@id/cardTrocarLogin">
-                <TextView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginEnd="14dp"
-                    android:gravity="center"
-                    android:text="🚪"
-                    android:textSize="18sp"
-                    android:background="@drawable/bg_set_tile"
-                    android:backgroundTint="#33FF5A5F"/>
-
-
+                <!-- Sair da Conta -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:id="@+id/cardLogout"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_settings_row"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sair da Conta"
+                            android:textColor="#C1443B"
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-medium"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Desconecta e volta para o login"
+                            android:textColor="#7C7C8A"
+                            android:textSize="12sp"/>
+
+                    </LinearLayout>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Sair da Conta"
+                        android:text="›"
                         android:textColor="#C1443B"
-                        android:textSize="16sp"
-                        android:textStyle="bold"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Desconecta e volta para o login"
-                        android:textColor="#888888"
-                        android:textSize="13sp"/>
+                        android:textSize="22sp"/>
 
                 </LinearLayout>
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="#C1443B"
-                    android:textSize="24sp"/>
 
             </LinearLayout>
 
