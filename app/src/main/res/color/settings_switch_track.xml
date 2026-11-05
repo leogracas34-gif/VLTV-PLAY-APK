@@ -1,1 +1,6 @@
-ryyr
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trilho do interruptor: cinza quando desligado (antes ficava vermelho, parecia erro) e vermelho da marca quando ligado. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="#C1443B" />
+    <item android:color="#3A3A46" />
+</selector>
