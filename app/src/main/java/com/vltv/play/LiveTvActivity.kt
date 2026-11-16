@@ -180,9 +180,16 @@ class LiveTvActivity : AppCompatActivity() {
 
     // ✅ Controle manual de arrastar-para-baixo (swipe down) que recolhe
     // o player, igual ao gesto do YouTube/mini player.
+    private var dragStartX = 0f
     private var dragStartY = 0f
     private var isDragging = false
     private val DRAG_COLLAPSE_THRESHOLD_DP = 90
+
+    // Gesto que COMEÇA na borda de cima (puxar a barra de notificações) ou nas laterais (gesto de voltar do sistema,
+    // botões laterais) pertence ao sistema, não ao app: não pode recolher a tela cheia.
+    private var gestoIgnorado = false
+    private val BORDA_TOPO_DP = 64
+    private val BORDA_LADO_DP = 28
 
     // ✅ Tolerância de movimento pra diferenciar um toque real de um
     // arrasto/scroll que só passou por cima do player. Sem isso, QUALQUER
@@ -421,22 +428,38 @@ class LiveTvActivity : AppCompatActivity() {
     private fun tratarArrastoParaFechar(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                val dm = resources.displayMetrics
+                val bordaTopo = BORDA_TOPO_DP * dm.density
+                val bordaLado = BORDA_LADO_DP * dm.density
+                gestoIgnorado = event.rawY < bordaTopo || event.rawX < bordaLado || event.rawX > dm.widthPixels - bordaLado
+                dragStartX = event.rawX
                 dragStartY = event.rawY
                 isDragging = false
             }
             MotionEvent.ACTION_MOVE -> {
-                if (event.pointerCount == 1 && !scaleGestureDetector.isInProgress) {
+                if (!gestoIgnorado && event.pointerCount == 1 && !scaleGestureDetector.isInProgress) {
                     val dy = event.rawY - dragStartY
-                    if (dy > 20) isDragging = true
+                    val dx = event.rawX - dragStartX
+                    // Só vale arrasto para baixo e predominantemente vertical.
+                    if (dy > 20 && dy > abs(dx)) isDragging = true
+                } else {
+                    isDragging = false
                 }
             }
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (isDragging) {
+            MotionEvent.ACTION_UP -> {
+                if (isDragging && !gestoIgnorado) {
                     val dy = event.rawY - dragStartY
+                    val dx = event.rawX - dragStartX
                     val thresholdPx = DRAG_COLLAPSE_THRESHOLD_DP * resources.displayMetrics.density
-                    if (dy > thresholdPx) recolherPlayer()
+                    if (dy > thresholdPx && dy > abs(dx) * 1.5f) recolherPlayer()
                 }
                 isDragging = false
+                gestoIgnorado = false
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                // O sistema (barra de notificações, gesto de voltar) assumiu o toque: nunca recolhe.
+                isDragging = false
+                gestoIgnorado = false
             }
         }
     }
