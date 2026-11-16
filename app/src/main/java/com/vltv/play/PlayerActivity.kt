@@ -121,6 +121,25 @@ class PlayerActivity : AppCompatActivity() {
     private val extensoesTentativa = mutableListOf<String>()
     private var extIndex = 0
 
+    // ── Reconexão rápida quando o DNS cai durante a reprodução ──────────────
+    // O gateway só troca de DNS quando o app pede de novo. Por isso, ao perder a conexão (erro do
+    // player ou travamento) o app repete o MESMO endereço na hora (o gateway manda para um DNS que
+    // funciona) e só troca de extensão se falhar de novo. Filme/série voltam do ponto onde estavam.
+    private var jaTocouNestaUrl = false
+    private var falhasMesmaExt = 0
+    private var tentativasSeguidas = 0
+    private var religarPendente = false
+    private val religarRunnable = Runnable {
+        religarPendente = false
+        if (!isFinishing && !isDestroyed && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) iniciarPlayer()
+    }
+    private val vigiaTravamento = Runnable {
+        val p = player ?: return@Runnable
+        if (!isFinishing && !isDestroyed && p.playWhenReady && p.playbackState == Player.STATE_BUFFERING) {
+            reconectarOnline()
+        }
+    }
+
     // ✅ CENTRALIZADO: o User-Agent agora vem de NetworkConfig, o mesmo
     // valor usado em todas as telas.
     private val USER_AGENT = NetworkConfig.USER_AGENT
@@ -1139,6 +1158,9 @@ class PlayerActivity : AppCompatActivity() {
         // encerra aqui pra próxima extração já recomeçar com a URL certa.
         encerrarSessaoDeThumbnailOnline()
 
+        jaTocouNestaUrl = false
+        handler.removeCallbacks(vigiaTravamento)
+
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(USER_AGENT)
             .setAllowCrossProtocolRedirects(true)
@@ -1198,6 +1220,10 @@ class PlayerActivity : AppCompatActivity() {
                 when (state) {
                     Player.STATE_READY     -> {
                         loading.visibility = View.GONE
+                        jaTocouNestaUrl = true
+                        falhasMesmaExt = 0
+                        tentativasSeguidas = 0
+                        handler.removeCallbacks(vigiaTravamento)
                         // ✅ NOVO: mesma pré-geração de miniaturas, agora
                         // pro fluxo online.
                         if (!pregeracaoDeThumbnailsDisparada) {
@@ -1205,13 +1231,19 @@ class PlayerActivity : AppCompatActivity() {
                             dispararPregeracaoDeThumbnails()
                         }
                     }
-                    Player.STATE_BUFFERING -> loading.visibility = View.VISIBLE
+                    Player.STATE_BUFFERING -> {
+                        loading.visibility = View.VISIBLE
+                        agendarVigiaTravamento()
+                    }
                     Player.STATE_ENDED     -> {
                         if (streamType == "movie") {
                             clearMovieResume(streamId)
                         } else if (streamType == "series") {
                             clearSeriesResume(streamId)
                             if (nextStreamId != 0 && !nextEpisodeLaunched) abrirProximoEpisodio()
+                        } else if (streamType == "live") {
+                            // Canal ao vivo não "termina": se acabou, a conexão caiu.
+                            reconectarOnline()
                         }
                     }
                 }
@@ -1219,9 +1251,38 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 loading.visibility = View.VISIBLE
-                handler.postDelayed({ tentarProximo() }, 1000L)
+                reconectarOnline()
             }
         })
+    }
+
+    private fun limiteTravamentoMs(): Long {
+        val live = streamType == "live"
+        return if (jaTocouNestaUrl) { if (live) 8000L else 15000L } else { if (live) 12000L else 20000L }
+    }
+
+    private fun agendarVigiaTravamento() {
+        handler.removeCallbacks(vigiaTravamento)
+        handler.postDelayed(vigiaTravamento, limiteTravamentoMs())
+    }
+
+    // Conexão perdida (erro ou travamento): repete o mesmo endereço quase na hora; na 2ª falha seguida troca a extensão.
+    private fun reconectarOnline() {
+        if (religarPendente) return
+        handler.removeCallbacks(vigiaTravamento)
+        if (streamType == "movie" || streamType == "series") {
+            val pos = player?.currentPosition ?: 0L
+            if (jaTocouNestaUrl && pos > 0L) startPositionMs = pos
+        }
+        tentativasSeguidas++
+        falhasMesmaExt++
+        if (falhasMesmaExt >= 2) {
+            falhasMesmaExt = 0
+            extIndex++
+        }
+        val atraso = when (tentativasSeguidas) { 1 -> 300L; 2 -> 1000L; 3 -> 2000L; else -> 3000L }
+        religarPendente = true
+        handler.postDelayed(religarRunnable, atraso)
     }
 
     private fun tentarProximo() {
@@ -1580,6 +1641,9 @@ class PlayerActivity : AppCompatActivity() {
         pausaLg?.parar()
         super.onDestroy()
         handler.removeCallbacks(nextChecker)
+        handler.removeCallbacks(religarRunnable)
+        handler.removeCallbacks(vigiaTravamento)
+        religarPendente = false
         val p = player
         if (p != null) {
             // ✅ CORRIGIDO: mesmo ajuste do onPause — cobre filme offline.
@@ -1633,6 +1697,9 @@ class PlayerActivity : AppCompatActivity() {
     // aqui, porque fechar pelo X pode não disparar onDestroy().
     override fun onStop() {
         super.onStop()
+        handler.removeCallbacks(religarRunnable)
+        handler.removeCallbacks(vigiaTravamento)
+        religarPendente = false
 
         val p = player
         if (p != null) {

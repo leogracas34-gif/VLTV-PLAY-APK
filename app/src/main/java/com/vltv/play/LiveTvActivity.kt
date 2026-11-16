@@ -98,6 +98,26 @@ class LiveTvActivity : AppCompatActivity() {
     // ── Player embutido (único, nunca recriado ao expandir/recolher) ──
     private var player: ExoPlayer? = null
     private var canalAtual: LiveStream? = null
+
+    // ── Reconexão rápida quando o DNS cai durante o canal ───────────────────
+    // O gateway só troca de DNS quando o app pede de novo. Ao perder a conexão (erro ou travamento)
+    // o app repete o MESMO endereço quase na hora e só troca de extensão se falhar de novo.
+    // Não desiste sozinho: tenta até MAX_RECONEXOES_CANAL vezes seguidas (zera quando o canal volta a tocar).
+    private var jaTocouNestaUrl = false
+    private var falhasMesmaExt = 0
+    private var tentativasSeguidas = 0
+    private var religarPendente = false
+    private val religarRunnable = Runnable {
+        religarPendente = false
+        val canal = canalAtual
+        if (canal != null && !isFinishing && !isDestroyed && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) tocarCanal(canal, resetIndices = false)
+    }
+    private val vigiaTravamento = Runnable {
+        val p = player ?: return@Runnable
+        if (!isFinishing && !isDestroyed && p.playWhenReady && p.playbackState == Player.STATE_BUFFERING) {
+            reconectarCanal()
+        }
+    }
     private var isExpanded = false
     private var ultimoEpgAgoraTexto: String = ""
 
@@ -536,37 +556,73 @@ class LiveTvActivity : AppCompatActivity() {
                     Player.STATE_READY     -> {
                         playerLoading.visibility = View.GONE
                         playerBuffering = false
+                        jaTocouNestaUrl = true
+                        falhasMesmaExt = 0
+                        tentativasSeguidas = 0
+                        handler.removeCallbacks(vigiaTravamento)
                     }
                     Player.STATE_BUFFERING -> {
                         playerLoading.visibility = View.VISIBLE
                         playerBuffering = true
+                        agendarVigiaTravamento()
+                    }
+                    Player.STATE_ENDED     -> {
+                        // Canal ao vivo não "termina": se acabou, a conexão caiu.
+                        reconectarCanal()
                     }
                 }
             }
             override fun onPlayerError(error: PlaybackException) {
-                extIndex++
-                if (extIndex >= extensoesTentativa.size) {
-                    extIndex = 0
-                    serverIndex++
-                }
-
-                if (serverIndex < activeServerList.size) {
-                    canalAtual?.let { tocarCanal(it, resetIndices = false) }
-                } else {
-                    serverIndex = 0
-                    extIndex = 0
-                    Toast.makeText(this@LiveTvActivity, "Falha ao conectar ao canal.", Toast.LENGTH_SHORT).show()
-                }
+                reconectarCanal()
             }
         })
+    }
+
+    private fun agendarVigiaTravamento() {
+        handler.removeCallbacks(vigiaTravamento)
+        handler.postDelayed(vigiaTravamento, if (jaTocouNestaUrl) 8000L else 12000L)
+    }
+
+    private fun reconectarCanal() {
+        if (religarPendente) return
+        handler.removeCallbacks(vigiaTravamento)
+        if (canalAtual == null) return
+        if (tentativasSeguidas >= MAX_RECONEXOES_CANAL) {
+            tentativasSeguidas = 0
+            falhasMesmaExt = 0
+            serverIndex = 0
+            extIndex = 0
+            Toast.makeText(this, "Falha ao conectar ao canal.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        tentativasSeguidas++
+        falhasMesmaExt++
+        if (falhasMesmaExt >= 2) {
+            falhasMesmaExt = 0
+            extIndex++
+            if (extIndex >= extensoesTentativa.size) {
+                extIndex = 0
+                serverIndex++
+                if (serverIndex >= activeServerList.size) serverIndex = 0
+            }
+        }
+        val atraso = when (tentativasSeguidas) { 1 -> 300L; 2 -> 1000L; 3 -> 2000L; else -> 3000L }
+        religarPendente = true
+        handler.postDelayed(religarRunnable, atraso)
     }
 
     private fun tocarCanal(canal: LiveStream, resetIndices: Boolean = true) {
         garantirPlayerCriado()
         canalAtual = canal
+        jaTocouNestaUrl = false
+        handler.removeCallbacks(vigiaTravamento)
         if (resetIndices) {
             serverIndex = 0
             extIndex = 0
+            falhasMesmaExt = 0
+            tentativasSeguidas = 0
+            handler.removeCallbacks(religarRunnable)
+            religarPendente = false
         }
 
         if (activeServerList.isEmpty()) {
@@ -1242,12 +1298,17 @@ class LiveTvActivity : AppCompatActivity() {
             return
         }
         pipFechamentoSuspeito = false
+        handler.removeCallbacks(religarRunnable)
+        handler.removeCallbacks(vigiaTravamento)
+        religarPendente = false
         player?.pause()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(PIP_CLOSE_TOKEN)
+        handler.removeCallbacks(religarRunnable)
+        handler.removeCallbacks(vigiaTravamento)
         categoriasCall?.cancel()
         canaisCall?.cancel()
         bulkFetchCall?.cancel()
@@ -1257,5 +1318,6 @@ class LiveTvActivity : AppCompatActivity() {
 
     companion object {
         private val PIP_CLOSE_TOKEN = Any()
+        private const val MAX_RECONEXOES_CANAL = 40
     }
 }
