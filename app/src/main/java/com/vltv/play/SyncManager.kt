@@ -89,6 +89,17 @@ object SyncManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
 
+    // ✅ NOVO (OutOfMemoryError em celulares com pouca memória, ex.: Galaxy A13):
+    // o Android limita a memória (heap) de cada app — em aparelhos de entrada o
+    // teto é ~192 MB. A sincronização completa baixa e interpreta o JSON de
+    // filmes, séries e canais ao vivo (org.json gasta muita memória por item) e
+    // ainda mantém outras cópias do catálogo. Em aparelhos com teto de heap
+    // até 256 MB, os downloads passam a rodar UM DE CADA VEZ (filmes → séries →
+    // canais ao vivo) em vez dos três ao mesmo tempo. Aparelhos com mais folga
+    // continuam exatamente como antes (em paralelo).
+    private val economiaDeMemoria: Boolean =
+        Runtime.getRuntime().maxMemory() <= 256L * 1024L * 1024L
+
     @Volatile
     private var jaSincronizouNestaSessao = false
 
@@ -358,8 +369,10 @@ object SyncManager {
             // lista nova, carregamos o que já existe no banco e
             // preservamos essas colunas calculadas — só os campos que
             // realmente vêm do Xtream são atualizados.
-            val vodsExistentes = try { db.streamDao().getAllVods().associateBy { it.stream_id } } catch (e: Exception) { emptyMap() }
-            val seriesExistentes = try { db.streamDao().getAllSeries().associateBy { it.series_id } } catch (e: Exception) { emptyMap() }
+            // (var, e não val: depois do download essas referências são soltas
+            // pra liberar memória — ver "libera memória" mais abaixo.)
+            var vodsExistentes: Map<Int, VodEntity> = try { db.streamDao().getAllVods().associateBy { it.stream_id } } catch (e: Exception) { emptyMap() }
+            var seriesExistentes: Map<Int, SeriesEntity> = try { db.streamDao().getAllSeries().associateBy { it.series_id } } catch (e: Exception) { emptyMap() }
             logTempo("leitura local (vodsExistentes/seriesExistentes)")
 
             // ✅ CORRIGIDO (Home demorando 6-7s pra aparecer ao reabrir o
@@ -441,8 +454,8 @@ object SyncManager {
             // passa a ser o da mais lenta das três, não a soma delas.
             // Canais AO VIVO continuam vindo sempre do Xtream — o backend
             // não guarda essa lista.
-            val vodsCompletos: List<VodEntity>
-            val seriesCompletos: List<SeriesEntity>
+            var vodsCompletos: List<VodEntity> = emptyList()
+            var seriesCompletos: List<SeriesEntity> = emptyList()
 
             // ✅ CORRIGIDO (abas "Filmes para você", "Séries para você" e
             // "Novidades" demorando muito na 1ª instalação): a Home só era
@@ -474,10 +487,10 @@ object SyncManager {
             // fosse gravado com o mapa `vodsExistentes` lido ANTES do pacote, ele
             // sobrescreveria essas marcas com 0 (insert REPLACE). Re-lê o Room aqui pra
             // preservá-las. (O ramo "download pulado" continua usando o mapa original.)
-            val vodsBase: Map<Int, VodEntity> = if (inicialJob != null) {
+            var vodsBase: Map<Int, VodEntity> = if (inicialJob != null) {
                 try { db.streamDao().getAllVods().associateBy { it.stream_id } } catch (e: Exception) { vodsExistentes }
             } else vodsExistentes
-            val seriesBase: Map<Int, SeriesEntity> = if (inicialJob != null) {
+            var seriesBase: Map<Int, SeriesEntity> = if (inicialJob != null) {
                 try { db.streamDao().getAllSeries().associateBy { it.series_id } } catch (e: Exception) { seriesExistentes }
             } else seriesExistentes
 
@@ -488,7 +501,12 @@ object SyncManager {
                 seriesCompletos = seriesExistentes.values.toList()
                 logTempo("Download completo PULADO (última sync completa há menos de 3h)", "download-pulado")
             } else {
-                liveJob = scope.async { sincronizarLive(db, dns, user, pass) }
+                // ✅ NOVO: em aparelho com pouca memória (economiaDeMemoria), os canais
+                // ao vivo NÃO baixam junto com filmes/séries — ficam pro fim da
+                // sincronização (ver mais abaixo), quando o catálogo já foi liberado.
+                if (!economiaDeMemoria) {
+                    liveJob = scope.async { sincronizarLive(db, dns, user, pass) }
+                }
 
                 // ✅ CORRIGIDO: filmes e séries agora são independentes —
                 // se um download falhar (painel lento/timeout), o outro
@@ -509,6 +527,10 @@ object SyncManager {
                             vodsBase.values.toList()
                         }
                     }
+                    // ✅ NOVO: em aparelho com pouca memória, espera os filmes terminarem
+                    // (e o JSON deles ser liberado) antes de começar as séries.
+                    if (economiaDeMemoria) vodJob.await()
+
                     val seriesJob = async {
                         try {
                             val seriesArray = catalogoBackend?.seriesArray
@@ -531,6 +553,19 @@ object SyncManager {
                 }
                 logTempo("VOD + Séries (Xtream ou catálogo do backend, em paralelo)", "baixou-filmes+series")
             }
+
+            // ✅ NOVO — libera memória: a partir daqui o JSON do catálogo do backend
+            // (milhares de objetos org.json) e os mapas "existentes" não são mais
+            // necessários. Como são variáveis locais desta função longa, ficariam
+            // vivos até o FIM da sincronização (upload, TMDB, recarga final),
+            // somando várias cópias do catálogo na memória ao mesmo tempo — foi isso
+            // que estourou o heap (OutOfMemoryError) em aparelhos de entrada.
+            val catalogoVeioDoBackend = catalogoBackend != null
+            catalogoBackend = null
+            vodsExistentes = emptyMap()
+            seriesExistentes = emptyMap()
+            vodsBase = emptyMap()
+            seriesBase = emptyMap()
 
             // ✅ CORREÇÃO PRINCIPAL (Home mostrando só 2 filmes/2 séries até
             // fechar e abrir o app de novo): a Home lê a lista da MEMÓRIA
@@ -582,7 +617,7 @@ object SyncManager {
 
                 var resultadoBackend: HomeApiClient.HomeCatalogo? = null
 
-                if (catalogoBackend == null && !jaEnviouCatalogoAntes && podeTentarEnvio) {
+                if (!catalogoVeioDoBackend && !jaEnviouCatalogoAntes && podeTentarEnvio) {
                     // ✅ NOVO: antes de subir o catálogo inteiro, pergunta se o
                     // backend JÁ tem esse painel pronto (agora ele guarda por
                     // servidor, então outro DNS/cliente do mesmo servidor já
@@ -618,6 +653,13 @@ object SyncManager {
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+
+            // ✅ NOVO — libera memória: o catálogo já foi gravado no Room, enviado ao
+            // backend (se precisava) e está no ContentRepository. As listas locais
+            // não servem mais; soltar evita manter uma cópia velha durante o
+            // TMDB e a recarga final do banco.
+            vodsCompletos = emptyList()
+            seriesCompletos = emptyList()
 
             if (!aplicadoPeloBackend) {
                 // É AQUI que os nomes crus do provedor ("007", "Rambo") são
@@ -662,6 +704,12 @@ object SyncManager {
                 Log.d("SyncManager", texto)
             }
 
+            // ✅ NOVO: em aparelho com pouca memória, os canais ao vivo só começam a
+            // baixar agora, com filmes/séries já gravados e a Home já avisada.
+            if (economiaDeMemoria && liveJob == null && !pularDownloadCompleto) {
+                liveJob = scope.async { sincronizarLive(db, dns, user, pass) }
+            }
+
             // Canais ao vivo: só agora esperamos (já rodava em paralelo desde
             // o início). Falha aqui não afeta filmes/séries.
             try {
@@ -673,6 +721,12 @@ object SyncManager {
 
         } catch (e: Exception) {
             e.printStackTrace()
+            liveJob?.cancel()
+        } catch (e: OutOfMemoryError) {
+            // ✅ NOVO: sem memória no meio da sincronização. A sincronização é
+            // opcional (o banco local continua intacto), então aborta só ela em vez
+            // de derrubar o app inteiro — a próxima tentativa roda normalmente.
+            Log.e("SyncManager", "OutOfMemoryError na sincronização — abortada, app segue funcionando", e)
             liveJob?.cancel()
         }
     }

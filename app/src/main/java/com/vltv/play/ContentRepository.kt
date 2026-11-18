@@ -4,7 +4,6 @@ import android.content.Context
 import com.vltv.play.data.AppDatabase
 import com.vltv.play.data.VodEntity
 import com.vltv.play.data.SeriesEntity
-import com.vltv.play.data.LiveStreamEntity
 import kotlinx.coroutines.*
 
 /**
@@ -44,7 +43,9 @@ object ContentRepository {
     // ── Listas planas (usadas pela Home, busca, Top10, Novidades) ─────────────
     @Volatile var vods:   List<VodEntity>        = emptyList(); private set
     @Volatile var series: List<SeriesEntity>     = emptyList(); private set
-    @Volatile var lives:  List<LiveStreamEntity> = emptyList(); private set
+    // ✅ REMOVIDO (memória): a lista de canais ao vivo ("lives") era carregada
+    // do banco inteira aqui, mas NENHUMA tela lia ContentRepository.lives — a tela
+    // de TV ao vivo busca os canais direto da API. Só ocupava memória à toa.
 
     // ── Mapas por categoria (usados por VodActivity e SeriesActivity) ─────────
     // Chave = category_id. Acesso em O(1), completamente instantâneo.
@@ -107,16 +108,13 @@ object ContentRepository {
                 // Carrega TUDO em paralelo — uma única leitura do banco
                 val jVods   = async { dao.getAllVods() }
                 val jSeries = async { dao.getAllSeries() }
-                val jLives  = async { try { dao.searchLive("") } catch (e: Exception) { emptyList() } }
 
                 val todosVods   = jVods.await()
                 val todasSeries = jSeries.await()
-                val todasLives  = jLives.await()
 
                 // Listas planas para Home / busca / Top10 / Novidades
                 vods   = todosVods
                 series = todasSeries
-                lives  = todasLives
 
                 // Mapas por categoria — acesso O(1) nas telas de VOD e Séries
                 // groupBy é rápido mesmo com 10.000+ itens (< 5ms)
@@ -129,7 +127,10 @@ object ContentRepository {
                     listeners.forEach { it() }
                     listeners.clear()
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // ✅ Throwable (e não só Exception): inclui OutOfMemoryError. Se faltar
+                // memória ao carregar o catálogo, o app segue com listas vazias (a Home
+                // cai em carregarDadosLocaisImediato) em vez de travar.
                 e.printStackTrace()
                 pronto = true
                 withContext(Dispatchers.Main) {
@@ -184,7 +185,6 @@ object ContentRepository {
     fun limpar() {
         vods   = emptyList()
         series = emptyList()
-        lives  = emptyList()
         vodsPorCategoria   = emptyMap()
         seriesPorCategoria = emptyMap()
         pronto = false
