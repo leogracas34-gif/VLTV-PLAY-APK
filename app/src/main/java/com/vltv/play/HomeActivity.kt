@@ -2878,6 +2878,10 @@ class HomeActivity : AppCompatActivity() {
             currentProfileIcon = prefs.getString("last_profile_icon", currentProfileIcon)
                 ?.takeIf { it.isNotEmpty() } ?: currentProfileIcon
 
+            // ✅ Sincroniza progresso e favoritos com os outros aparelhos (mesmo login + perfil).
+            // Se veio algo novo, recarrega o "Continuar assistindo".
+            CloudSync.sincronizar(this, currentProfile) { carregarContinuarAssistindoLocal() }
+
             if (bannerFila.size >= 2) {
                 bannerFilaIndex = (bannerFilaIndex + 1) % bannerFila.size
                 mostrarItemNoBanner(bannerFila[bannerFilaIndex])

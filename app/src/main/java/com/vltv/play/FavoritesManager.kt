@@ -21,9 +21,12 @@ object FavoritesManager {
 
     private fun chave(context: Context) = "${perfilAtual(context)}_favorite_channels_json"
 
-    fun getFavorites(context: Context): List<LiveStream> {
+    fun getFavorites(context: Context): List<LiveStream> = getFavoritesDe(context, perfilAtual(context))
+
+    // ✅ Mesma lista, mas de um perfil específico (usado pela sincronização na nuvem).
+    fun getFavoritesDe(context: Context, perfil: String): List<LiveStream> {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val json = prefs.getString(chave(context), null) ?: return emptyList()
+        val json = prefs.getString("${perfil}_favorite_channels_json", null) ?: return emptyList()
         return try {
             val type = object : TypeToken<List<LiveStream>>() {}.type
             gson.fromJson<List<LiveStream>>(json, type) ?: emptyList()
@@ -50,7 +53,32 @@ object FavoritesManager {
             agoraFavoritado = true
         }
         salvar(context, atuais)
+        // ✅ Sincroniza com os outros aparelhos (celular <-> TV) pela VPS.
+        CloudSync.favorito(
+            context, perfilAtual(context), "c${channel.id}", agoraFavoritado,
+            CloudSync.metaCanal(channel.id, channel.name, channel.icon, channel.epg_channel_id, channel.category_id)
+        )
         return agoraFavoritado
+    }
+
+    // ✅ Aplica uma mudança que veio da nuvem (outro aparelho favoritou/desfavoritou um canal).
+    // Retorna true se a lista mudou. Não reenvia para a nuvem.
+    fun aplicarRemoto(
+        context: Context, perfil: String, id: Int,
+        nome: String, icone: String?, epg: String?, categoria: String?, ativo: Boolean
+    ): Boolean {
+        val atuais = getFavoritesDe(context, perfil).toMutableList()
+        val idx = atuais.indexOfFirst { it.id == id }
+        if (ativo) {
+            if (idx != -1 || nome.isBlank()) return false
+            atuais.add(LiveStream(id, nome, icone?.ifBlank { null }, epg?.ifBlank { null }, categoria?.ifBlank { null }))
+        } else {
+            if (idx == -1) return false
+            atuais.removeAt(idx)
+        }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("${perfil}_favorite_channels_json", gson.toJson(atuais)).apply()
+        return true
     }
 
     private fun salvar(context: Context, lista: List<LiveStream>) {

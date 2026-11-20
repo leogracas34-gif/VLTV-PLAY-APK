@@ -1404,7 +1404,11 @@ class PlayerActivity : AppCompatActivity() {
     private fun saveMovieResume(id: Int, positionMs: Long, durationMs: Long) {
         if (durationMs <= 0L) return
         val percent = positionMs.toDouble() / durationMs.toDouble()
-        if (positionMs < 30_000L || percent > 0.95) { clearMovieResume(id); return }
+        if (positionMs < 30_000L || percent > 0.95) {
+            clearMovieResume(id)
+            if (percent > 0.95 && streamType == "movie") CloudSync.concluir(applicationContext, currentProfile, false, id, durationMs)
+            return
+        }
         val prefs = getSharedPreferences("vltv_prefs", Context.MODE_PRIVATE)
         prefs.edit()
             .putLong("${getMovieKey(id)}_pos", positionMs)
@@ -1421,6 +1425,7 @@ class PlayerActivity : AppCompatActivity() {
             val nomeAtual = tvChannelName.text.toString()
             val iconeAtual = intent.getStringExtra("icon") ?: ""
             val profileAtual = currentProfile
+            CloudSync.enviarProgresso(applicationContext, profileAtual, false, id, positionMs, durationMs, nomeAtual, iconeAtual)
             historicoScope.launch {
                 try {
                     AppDatabase.getDatabase(applicationContext).streamDao().saveWatchHistory(WatchHistoryEntity(
@@ -1455,7 +1460,11 @@ class PlayerActivity : AppCompatActivity() {
     private fun saveSeriesResume(id: Int, positionMs: Long, durationMs: Long) {
         if (durationMs <= 0L) return
         val percent = positionMs.toDouble() / durationMs.toDouble()
-        if (positionMs < 30_000L || percent > 0.95) { clearSeriesResume(id); return }
+        if (positionMs < 30_000L || percent > 0.95) {
+            clearSeriesResume(id)
+            if (percent > 0.95 && streamType == "series") CloudSync.concluir(applicationContext, currentProfile, true, id, durationMs)
+            return
+        }
         val prefs = getSharedPreferences("vltv_prefs", Context.MODE_PRIVATE)
         prefs.edit()
             .putLong("${getSeriesKey(id)}_pos", positionMs)
@@ -1471,6 +1480,7 @@ class PlayerActivity : AppCompatActivity() {
             val nomeAtual = tvChannelName.text.toString()
             val iconeAtual = intent.getStringExtra("icon") ?: ""
             val profileAtual = currentProfile
+            CloudSync.enviarProgresso(applicationContext, profileAtual, true, id, positionMs, durationMs, nomeAtual, iconeAtual)
             historicoScope.launch {
                 try {
                     AppDatabase.getDatabase(applicationContext).streamDao().saveWatchHistory(WatchHistoryEntity(
