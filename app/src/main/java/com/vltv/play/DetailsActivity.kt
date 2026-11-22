@@ -897,7 +897,7 @@ class DetailsActivity : AppCompatActivity() {
         atualizarIconeFavorito(!isFav)
         if (isFav) favs.remove(streamId) else favs.add(streamId)
         saveFavMovies(this, favs)
-        CloudSync.favorito(this, currentProfile, "f$streamId", !isFav)
+        CloudSync.favorito(this, currentProfile, "f$streamId", !isFav, CloudSync.metaTitulo(name, icon))
     }
 
     private fun verificarResume() {

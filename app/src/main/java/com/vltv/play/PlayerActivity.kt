@@ -1480,7 +1480,7 @@ class PlayerActivity : AppCompatActivity() {
             val nomeAtual = tvChannelName.text.toString()
             val iconeAtual = intent.getStringExtra("icon") ?: ""
             val profileAtual = currentProfile
-            CloudSync.enviarProgresso(applicationContext, profileAtual, true, id, positionMs, durationMs, nomeAtual, iconeAtual)
+            CloudSync.enviarProgresso(applicationContext, profileAtual, true, id, positionMs, durationMs, nomeAtual, iconeAtual, intent.getIntExtra("series_id", 0))
             historicoScope.launch {
                 try {
                     AppDatabase.getDatabase(applicationContext).streamDao().saveWatchHistory(WatchHistoryEntity(

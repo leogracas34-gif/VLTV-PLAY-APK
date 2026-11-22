@@ -2,6 +2,9 @@ package com.vltv.play
 
 import android.content.Context
 import android.util.Log
+import com.vltv.play.data.AppDatabase
+import com.vltv.play.data.StreamDao
+import com.vltv.play.data.WatchHistoryEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -65,7 +68,16 @@ object CloudSync {
         return if (s.isEmpty()) "padrao" else s
     }
 
+    // Se a VPS recusar o login (conta que não é do gateway) ou bloquear por excesso, para de tentar por um tempo.
+    // Cada recusa conta como "login errado" para o IP do cliente: insistir poderia bloquear o IP dele no gateway.
+    @Volatile private var pausadoAte = 0L
+    private const val PAUSA_RECUSA_MS = 30 * 60 * 1000L
+
     private fun credenciais(ctx: Context): Pair<String, String>? {
+        if (System.currentTimeMillis() < pausadoAte) return null
+        // ✅ Só conta do VLTV Play (aba "Usuário", pelo gateway) sincroniza. Xtream com DNS próprio e
+        // código de parceiro não existem no gateway, então não têm conta na nuvem.
+        if (XtreamApi.modoLogin(ctx) != XtreamApi.MODO_USUARIO) return null
         val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val u = p.getString("username", "") ?: ""
         val s = p.getString("password", "") ?: ""
@@ -84,6 +96,7 @@ object CloudSync {
             SharedHttpClient.client.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) {
                     Log.w(TAG, "$path respondeu ${r.code}")
+                    if (r.code == 401 || r.code == 429) pausadoAte = System.currentTimeMillis() + PAUSA_RECUSA_MS
                     return null
                 }
                 val txt = r.body?.string() ?: return null
@@ -96,8 +109,15 @@ object CloudSync {
         }
     }
 
-    private fun metaProgresso(nome: String, icone: String, ehSerie: Boolean): JSONObject =
-        JSONObject().put("n", nome.take(300)).put("i", icone.take(400)).put("s", ehSerie)
+    private fun metaProgresso(nome: String, icone: String, ehSerie: Boolean, serieId: Int = 0): JSONObject {
+        val m = JSONObject().put("n", nome.take(300)).put("i", icone.take(400)).put("s", ehSerie)
+        if (ehSerie && serieId > 0) m.put("sid", serieId)   // id da SÉRIE (o "k" é o do episódio)
+        return m
+    }
+
+    /** Meta de favorito de filme/série: nome e capa, para o outro aparelho montar o card. */
+    fun metaTitulo(nome: String, capa: String?): JSONObject =
+        JSONObject().put("n", nome.take(200)).put("i", (capa ?: "").take(400))
 
     /** Dados do canal que viajam junto com o favorito (para o outro aparelho conseguir montar a lista). */
     fun metaCanal(id: Int, nome: String, icone: String?, epg: String?, categoria: String?): JSONObject =
@@ -153,7 +173,7 @@ object CloudSync {
     /** Progresso de filme/episódio assistindo agora (chamar ao pausar, sair e durante a reprodução). */
     fun enviarProgresso(
         ctx: Context, perfilNome: String, ehSerie: Boolean, id: Int,
-        posMs: Long, durMs: Long, nome: String, icone: String
+        posMs: Long, durMs: Long, nome: String, icone: String, serieId: Int = 0
     ) {
         if (durMs < 1000L || credenciais(ctx) == null) return
         val k = (if (ehSerie) "e" else "f") + id
@@ -163,7 +183,7 @@ object CloudSync {
             .put("dur", durMs / 1000L)
             .put("t", System.currentTimeMillis())
             .put("fim", false)
-            .put("meta", metaProgresso(nome, icone, ehSerie))
+            .put("meta", metaProgresso(nome, icone, ehSerie, serieId))
         colocar(ctx, Pend("p|${perfilId(perfilNome)}|$k", true, perfilNome, item))
     }
 
@@ -216,6 +236,7 @@ object CloudSync {
             var mudou = false
             try {
                 enviarPendentes(app)
+                enviarPerfis(app)
                 if (sincronizarProgresso(app, perfilNome)) mudou = true
                 if (sincronizarFavoritos(app, perfilNome)) mudou = true
             } catch (e: Exception) {
@@ -225,6 +246,39 @@ object CloudSync {
             }
             val cb = aoMudar
             if (mudou && cb != null) withContext(Dispatchers.Main) { cb() }
+        }
+    }
+
+    /**
+     * Sobe a lista de perfis do Android (nome, imagem, infantil) para a nuvem.
+     * É daqui que a TV (LG/Samsung) monta a tela "Quem está assistindo?".
+     * Perfil apagado aqui vira "removido" lá. Falha em silêncio.
+     */
+    private suspend fun enviarPerfis(ctx: Context) {
+        val cred = credenciais(ctx) ?: return
+        val sp = ctx.getSharedPreferences(PREFS_SYNC, Context.MODE_PRIVATE)
+        val agora = System.currentTimeMillis()
+        val lista = try { AppDatabase.getDatabase(ctx).streamDao().getAllProfiles() } catch (e: Exception) { return }
+        val arr = JSONArray()
+        val idsAgora = HashSet<String>()
+        lista.forEach { p ->
+            val id = perfilId(p.name)
+            if (!idsAgora.add(id)) return@forEach   // dois perfis com o mesmo id: vale o primeiro
+            arr.put(
+                JSONObject().put("id", id).put("nome", p.name.take(40))
+                    .put("imagem", (p.imageUrl ?: "").take(300)).put("kids", p.isKids).put("atualizado", agora)
+            )
+        }
+        val enviadosAntes = sp.getStringSet("perfis_enviados", emptySet()) ?: emptySet()
+        enviadosAntes.forEach { id ->
+            if (!idsAgora.contains(id)) {
+                arr.put(JSONObject().put("id", id).put("nome", "").put("removido", true).put("atualizado", agora))
+            }
+        }
+        if (arr.length() == 0) return
+        val corpo = JSONObject().put("user", cred.first).put("pass", cred.second).put("perfis", arr)
+        if (post("/conta/perfis", corpo) != null) {
+            sp.edit().putStringSet("perfis_enviados", idsAgora).apply()
         }
     }
 
@@ -299,6 +353,7 @@ object CloudSync {
         val meta = it.optJSONObject("meta")
         val nome = (meta?.optString("n", "") ?: "").ifBlank { local?.name ?: "" }
         val icone = (meta?.optString("i", "") ?: "").ifBlank { local?.icon ?: "" }
+        if (nome.isBlank()) return false   // sem nome não há o que mostrar no "Continuar assistindo"
 
         // Mesmas chaves que o PlayerActivity grava (a barra "Assistido" e o "Retomar" leem daqui).
         val keyIds = "${perfil}_local_history_ids"

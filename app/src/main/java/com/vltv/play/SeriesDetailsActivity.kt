@@ -261,7 +261,7 @@ class SeriesDetailsActivity : AppCompatActivity() {
             val favs = getFavSeries(this)
             if (favs.contains(seriesId)) favs.remove(seriesId) else favs.add(seriesId)
             saveFavSeries(this, favs)
-            CloudSync.favorito(this, currentProfile, "s$seriesId", favs.contains(seriesId))
+            CloudSync.favorito(this, currentProfile, "s$seriesId", favs.contains(seriesId), CloudSync.metaTitulo(seriesName, seriesIcon))
             atualizarIconeFavoritoSerie(favs.contains(seriesId))
         }
 
