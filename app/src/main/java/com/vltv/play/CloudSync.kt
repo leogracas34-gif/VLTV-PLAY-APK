@@ -472,7 +472,7 @@ object CloudSync {
                 sigAposEnvio.forEach { (id, par) ->
                     ed.putString("perfsig_$id", par.first).putString("perfcloud_$id", par.second)
                 }
-                apagadosAqui.forEach { ed.remove("perfsig_$id").remove("perfcloud_$id") }
+                apagadosAqui.forEach { apagado -> ed.remove("perfsig_$apagado").remove("perfcloud_$apagado") }
             }
         }
 
