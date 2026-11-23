@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Avatar próprio do VLTV (sem personagem): igual ao estilo "por-do-sol" da TV. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:angle="270"
+                android:startColor="#ff7e5f"
+                android:endColor="#c94b9c" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerX="0.5"
+                android:centerY="1.0"
+                android:gradientRadius="55%p"
+                android:startColor="#99ffd166"
+                android:endColor="#00ffffff" />
+        </shape>
+    </item>
+</layer-list>
