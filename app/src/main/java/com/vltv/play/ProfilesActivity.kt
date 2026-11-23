@@ -160,6 +160,8 @@ class ProfilesActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         loadProfilesFromDb()
+        // Perfis criados/alterados/apagados na TV chegam aqui; se mudou algo, recarrega a lista.
+        CloudSync.sincronizarPerfis(this) { loadProfilesFromDb() }
         if (bgItems.isNotEmpty()) {
             handler.removeCallbacks(bgRotator)
             handler.post(bgRotator)
@@ -553,8 +555,21 @@ class ProfilesActivity : AppCompatActivity() {
                         } else p
                     }
                 }
-                if (perfis.isEmpty()) createDefaultProfiles()
-                else {
+                if (perfis.isEmpty()) {
+                    // ✅ Antes de criar os perfis padrão, olha se a conta já tem perfis na nuvem
+                    // (criados na TV ou em outro celular). Se tiver, eles aparecem aqui.
+                    val vieramDaNuvem = CloudSync.sincronizarPerfisAgora(this@ProfilesActivity)
+                    val depois = if (vieramDaNuvem) withContext(Dispatchers.IO) { db.streamDao().getAllProfiles() } else emptyList()
+                    if (depois.isEmpty()) createDefaultProfiles()
+                    else {
+                        listaPerfis.clear(); listaPerfis.addAll(depois)
+                        withContext(Dispatchers.Main) {
+                            adapter.notifyDataSetChanged()
+                            showShimmer(false)
+                            animateCardsIn()
+                        }
+                    }
+                } else {
                     listaPerfis.clear(); listaPerfis.addAll(perfis)
                     withContext(Dispatchers.Main) {
                         adapter.notifyDataSetChanged()
@@ -581,9 +596,9 @@ class ProfilesActivity : AppCompatActivity() {
 
     private suspend fun createDefaultProfiles() {
         isCreating = true
+        // ✅ Mesmos dois perfis que a TV mostra: "Meu perfil" e "Infantil" (avatar próprio, sem personagem).
         val padrao = listOf(
-            ProfileEntity(name = "Perfil 1", imageUrl = defaultAvatarId1),
-            ProfileEntity(name = "Perfil 2", imageUrl = defaultAvatarId2),
+            ProfileEntity(name = "Meu perfil", imageUrl = CloudSync.avatarAutomatico(CloudSync.perfilId("Meu perfil"))),
             ProfileEntity(name = "Infantil", imageUrl = defaultAvatarIdInfantil, isKids = true)
         )
         withContext(Dispatchers.IO) {
@@ -611,8 +626,11 @@ class ProfilesActivity : AppCompatActivity() {
             val nome = etNome.text.toString().trim()
             if (nome.isNotEmpty()) {
                 lifecycleScope.launch(Dispatchers.IO) {
-                    db.streamDao().insertProfile(ProfileEntity(name = nome, imageUrl = defaultAvatarId1))
+                    db.streamDao().insertProfile(
+                        ProfileEntity(name = nome, imageUrl = CloudSync.avatarAutomatico(CloudSync.perfilId(nome)))
+                    )
                     withContext(Dispatchers.Main) { loadProfilesFromDb() }
+                    CloudSync.sincronizarPerfis(this@ProfilesActivity)   // a TV já recebe o perfil novo
                 }
                 bottomSheet.dismiss()
             } else {

@@ -41,6 +41,14 @@ class VLTVApplication : Application() {
             e.printStackTrace()
         }
 
+        // ✅ Perfis em sincronia com a TV: ao sair das telas de perfil (Configurações, Perfis, Editar),
+        // manda a mudança para a nuvem na hora, em vez de esperar a Home sincronizar.
+        try {
+            CloudSync.observarTelasDePerfil(this)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         // ── 1. Pré-carrega dados do banco para memória ────────────────────────
         // Isso roda em background (IO thread) assim que o app inicia.
         // Quando a HomeActivity abrir (alguns milissegundos depois),

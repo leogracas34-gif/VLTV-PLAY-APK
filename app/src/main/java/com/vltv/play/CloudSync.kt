@@ -1,15 +1,21 @@
 package com.vltv.play
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import android.util.Log
 import com.vltv.play.data.AppDatabase
+import com.vltv.play.data.ProfileEntity
 import com.vltv.play.data.StreamDao
 import com.vltv.play.data.WatchHistoryEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -26,7 +32,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  * (filmes, séries e canais) no celular, na TV Android, na LG e na Samsung.
  *
  * Rotas usadas (ver perfis.js no gateway):
- *   POST /conta/progresso   POST /conta/favoritos
+ *   POST /conta/perfis   POST /conta/progresso   POST /conta/favoritos
+ *
+ * Vale para a conta VLTV Play (aba "Usuário") e para código de PARCEIRO (o gateway confere o código
+ * no painel do parceiro). Xtream comum e M3U não sincronizam.
  *
  * Regras:
  *  - O id do perfil na nuvem sai do NOME do perfil (perfilId): "Léo" vira "leo".
@@ -73,19 +82,34 @@ object CloudSync {
     @Volatile private var pausadoAte = 0L
     private const val PAUSA_RECUSA_MS = 30 * 60 * 1000L
 
-    private fun credenciais(ctx: Context): Pair<String, String>? {
+    /** Quem está logado: usuário/senha e, se for parceiro, o código (o gateway exige o código para conferir a conta). */
+    private class Cred(val user: String, val pass: String, val parceiro: String)
+
+    private fun credenciais(ctx: Context): Cred? {
         if (System.currentTimeMillis() < pausadoAte) return null
-        // ✅ Só conta do VLTV Play (aba "Usuário", pelo gateway) sincroniza. Xtream com DNS próprio e
-        // código de parceiro não existem no gateway, então não têm conta na nuvem.
-        if (XtreamApi.modoLogin(ctx) != XtreamApi.MODO_USUARIO) return null
+        // ✅ Sincroniza conta do VLTV Play (aba "Usuário") e código de PARCEIRO.
+        // Xtream comum e M3U não existem no gateway, então não têm conta na nuvem.
+        val modo = XtreamApi.modoLogin(ctx)
+        var parceiro = ""
+        if (modo == XtreamApi.MODO_PARCEIRO) {
+            parceiro = LicencaManager.parceiroAtual(ctx).trim().uppercase()
+            if (parceiro.isEmpty()) return null
+        } else if (modo != XtreamApi.MODO_USUARIO) {
+            return null
+        }
         val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val u = p.getString("username", "") ?: ""
         val s = p.getString("password", "") ?: ""
-        return if (u.isBlank() || s.isBlank()) null else Pair(u, s)
+        return if (u.isBlank() || s.isBlank()) null else Cred(u, s, parceiro)
     }
 
-    private fun corpoBase(user: String, pass: String, pid: String): JSONObject =
-        JSONObject().put("user", user).put("pass", pass).put("perfil", pid)
+    private fun corpoBase(c: Cred): JSONObject {
+        val j = JSONObject().put("user", c.user).put("pass", c.pass)
+        if (c.parceiro.isNotEmpty()) j.put("parceiro", c.parceiro)
+        return j
+    }
+
+    private fun corpoBase(c: Cred, pid: String): JSONObject = corpoBase(c).put("perfil", pid)
 
     private fun post(path: String, corpo: JSONObject): JSONObject? {
         return try {
@@ -96,7 +120,7 @@ object CloudSync {
             SharedHttpClient.client.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) {
                     Log.w(TAG, "$path respondeu ${r.code}")
-                    if (r.code == 401 || r.code == 429) pausadoAte = System.currentTimeMillis() + PAUSA_RECUSA_MS
+                    if (r.code == 401 || r.code == 403 || r.code == 429) pausadoAte = System.currentTimeMillis() + PAUSA_RECUSA_MS
                     return null
                 }
                 val txt = r.body?.string() ?: return null
@@ -161,7 +185,7 @@ object CloudSync {
             val pid = perfilId(chave.second)
             val arr = JSONArray()
             itens.forEach { arr.put(it.item) }
-            val corpo = corpoBase(cred.first, cred.second, pid).put("itens", arr)
+            val corpo = corpoBase(cred, pid).put("itens", arr)
             val rota = if (chave.first) "/conta/progresso" else "/conta/favoritos"
             val ok = post(rota, corpo) != null
             if (!ok) {
@@ -234,9 +258,10 @@ object CloudSync {
 
         scope.launch {
             var mudou = false
+            var perfisMudaram = false
             try {
                 enviarPendentes(app)
-                enviarPerfis(app)
+                if (sincronizarPerfisInterno(app)) perfisMudaram = true
                 if (sincronizarProgresso(app, perfilNome)) mudou = true
                 if (sincronizarFavoritos(app, perfilNome)) mudou = true
             } catch (e: Exception) {
@@ -245,40 +270,266 @@ object CloudSync {
                 sincronizando.set(false)
             }
             val cb = aoMudar
-            if (mudou && cb != null) withContext(Dispatchers.Main) { cb() }
+            if ((mudou || perfisMudaram) && cb != null) withContext(Dispatchers.Main) { cb() }
         }
     }
 
-    /**
-     * Sobe a lista de perfis do Android (nome, imagem, infantil) para a nuvem.
-     * É daqui que a TV (LG/Samsung) monta a tela "Quem está assistindo?".
-     * Perfil apagado aqui vira "removido" lá. Falha em silêncio.
-     */
-    private suspend fun enviarPerfis(ctx: Context) {
-        val cred = credenciais(ctx) ?: return
-        val sp = ctx.getSharedPreferences(PREFS_SYNC, Context.MODE_PRIVATE)
-        val agora = System.currentTimeMillis()
-        val lista = try { AppDatabase.getDatabase(ctx).streamDao().getAllProfiles() } catch (e: Exception) { return }
-        val arr = JSONArray()
-        val idsAgora = HashSet<String>()
-        lista.forEach { p ->
-            val id = perfilId(p.name)
-            if (!idsAgora.add(id)) return@forEach   // dois perfis com o mesmo id: vale o primeiro
-            arr.put(
-                JSONObject().put("id", id).put("nome", p.name.take(40))
-                    .put("imagem", (p.imageUrl ?: "").take(300)).put("kids", p.isKids).put("atualizado", agora)
+    // ───────────────────────── Perfis (celular <-> nuvem <-> TV) ─────────────────────────
+    //
+    // Os perfis agora andam nos DOIS sentidos:
+    //  - perfil criado/editado/apagado na TV aparece aqui (e o inverso);
+    //  - o celular só manda o que ELE mudou (antes mandava tudo de novo com a hora de agora,
+    //    o que desfazia o que a TV tinha feito);
+    //  - para saber quem mudou, guardamos o que cada perfil era na última sincronização
+    //    ("perfsig_<id>" = como estava aqui, "perfcloud_<id>" = como estava na nuvem).
+
+    private val ESTILOS_AVATAR = arrayOf(
+        "aurora", "por-do-sol", "oceano", "floresta", "galaxia", "fogo",
+        "doce", "menta", "ouro", "meia-noite", "rosa", "grafite"
+    )
+    private const val AVATAR_KIDS = "av_infantil"
+    private const val AVATAR_TV_PADRAO = "av_iron_man"   // o que a TV grava quando o perfil não tem imagem
+    private val perfisMutex = kotlinx.coroutines.sync.Mutex()
+
+    private class PerfilNuvem(val id: String, val nome: String, val imagem: String, val kids: Boolean, val removido: Boolean)
+
+    /** Avatar automático (mesma conta da TV): o estilo sai do id do perfil. Ex.: "av_vltv_aurora". */
+    fun avatarAutomatico(id: String): String {
+        var h = 0
+        for (ch in id) h = (h * 31 + ch.code) % 9973
+        return "av_vltv_" + ESTILOS_AVATAR[h % ESTILOS_AVATAR.size].replace('-', '_')
+    }
+
+    /** Como a imagem vai para a nuvem: avatar próprio do VLTV vira "vltv:<id>" (a TV desenha igual). */
+    private fun imagemParaNuvem(local: String?): String {
+        val s = local ?: ""
+        return if (s.startsWith("av_vltv_")) "vltv:" + s.removePrefix("av_vltv_").replace('_', '-') else s.take(300)
+    }
+
+    /** Como a imagem vinda da nuvem fica aqui. Sem imagem (ou o padrão da TV) usa o avatar automático. */
+    private fun imagemDaNuvem(ctx: Context, nuvem: String, kids: Boolean, id: String): String {
+        if (kids) return AVATAR_KIDS
+        if (nuvem.startsWith("vltv:")) {
+            val nome = "av_vltv_" + nuvem.removePrefix("vltv:").replace('-', '_')
+            if (ctx.resources.getIdentifier(nome, "drawable", ctx.packageName) != 0) return nome
+        } else if (nuvem.startsWith("http://") || nuvem.startsWith("https://")) {
+            return nuvem
+        } else if (nuvem.startsWith("av_") && nuvem != AVATAR_TV_PADRAO &&
+            ctx.resources.getIdentifier(nuvem, "drawable", ctx.packageName) != 0
+        ) {
+            return nuvem
+        }
+        return avatarAutomatico(id)
+    }
+
+    private fun assinatura(nome: String, imagem: String, kids: Boolean) = "${nome.take(40)}|$imagem|$kids"
+
+    private fun lerPerfisNuvem(resp: JSONObject): LinkedHashMap<String, PerfilNuvem> {
+        val mapa = LinkedHashMap<String, PerfilNuvem>()
+        val arr = resp.optJSONArray("perfis") ?: return mapa
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val id = o.optString("id", "")
+            if (id.isEmpty()) continue
+            mapa[id] = PerfilNuvem(
+                id, o.optString("nome", ""), o.optString("imagem", ""),
+                o.optBoolean("kids", false), o.optBoolean("removido", false)
             )
         }
-        val enviadosAntes = sp.getStringSet("perfis_enviados", emptySet()) ?: emptySet()
-        enviadosAntes.forEach { id ->
-            if (!idsAgora.contains(id)) {
-                arr.put(JSONObject().put("id", id).put("nome", "").put("removido", true).put("atualizado", agora))
+        return mapa
+    }
+
+    /** Devolve true se a lista de perfis deste aparelho mudou (para a tela recarregar). */
+    private suspend fun sincronizarPerfisInterno(ctx: Context): Boolean = perfisMutex.withLock {
+        val cred = credenciais(ctx) ?: return@withLock false
+        val sp = ctx.getSharedPreferences(PREFS_SYNC, Context.MODE_PRIVATE)
+        val dao = AppDatabase.getDatabase(ctx).streamDao()
+
+        // Trocou de conta neste aparelho: o que foi guardado é de outra conta e não vale.
+        val conta = cred.user + "|" + cred.parceiro
+        if (sp.getString("perfis_conta", "") != conta) {
+            val ed0 = sp.edit()
+            sp.all.keys.filter { it.startsWith("perfsig_") || it.startsWith("perfcloud_") }.forEach { ed0.remove(it) }
+            ed0.remove("perfis_enviados").putString("perfis_conta", conta).apply()
+        }
+
+        val resp = post("/conta/perfis", corpoBase(cred)) ?: return@withLock false
+        val nuvem = lerPerfisNuvem(resp)
+
+        val locais = try { dao.getAllProfiles() } catch (e: Exception) { return@withLock false }
+        val porId = LinkedHashMap<String, ProfileEntity>()
+        locais.forEach { porId.putIfAbsent(perfilId(it.name), it) }   // dois com o mesmo id: vale o primeiro
+
+        val conhecidos = (sp.getStringSet("perfis_enviados", emptySet()) ?: emptySet()).toSet()
+        val atual = perfilId(ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("last_profile_name", "") ?: "")
+        val agora = System.currentTimeMillis()
+
+        val ed = sp.edit()
+        val enviar = JSONArray()
+        val sigAposEnvio = HashMap<String, Pair<String, String>>()   // id -> (como ficou aqui, como ficou na nuvem)
+        val sincronizados = HashSet<String>()
+        var mudouLocal = false
+
+        fun registrarEnvio(l: ProfileEntity, id: String) {
+            val img = imagemParaNuvem(l.imageUrl)
+            enviar.put(
+                JSONObject().put("id", id).put("nome", l.name.take(40)).put("imagem", img)
+                    .put("kids", l.isKids).put("atualizado", agora)
+            )
+            sigAposEnvio[id] = Pair(assinatura(l.name, img, l.isKids), assinatura(l.name, img, l.isKids))
+        }
+
+        // 1) O que a nuvem tem
+        for ((id, c) in nuvem) {
+            val l = porId[id]
+            val sigCloud = assinatura(c.nome, c.imagem, c.kids)
+            val sl = sp.getString("perfsig_$id", null)
+            val sc = sp.getString("perfcloud_$id", null)
+
+            if (l == null) {
+                if (c.removido || conhecidos.contains(id)) continue   // apagado (lá ou aqui): nada a criar
+                val nomeNovo = c.nome.ifBlank { id }.take(40)
+                val novo = ProfileEntity(
+                    name = nomeNovo,
+                    imageUrl = imagemDaNuvem(ctx, c.imagem, c.kids, id),
+                    isKids = c.kids
+                )
+                dao.insertProfile(novo)
+                mudouLocal = true
+                ed.putString("perfsig_$id", assinatura(novo.name, imagemParaNuvem(novo.imageUrl), novo.isKids))
+                    .putString("perfcloud_$id", sigCloud)
+                sincronizados.add(id)
+                continue
+            }
+
+            val sigL = assinatura(l.name, imagemParaNuvem(l.imageUrl), l.isKids)
+            val localMudou = sl == null || sigL != sl
+
+            if (c.removido) {
+                if (sl != null && !localMudou && id != atual) {
+                    // Foi apagado em outro aparelho e aqui ninguém mexeu: apaga também.
+                    dao.deleteProfile(l)
+                    porId.remove(id)
+                    ed.remove("perfsig_$id").remove("perfcloud_$id")
+                    mudouLocal = true
+                } else {
+                    registrarEnvio(l, id)   // é o perfil em uso, ou foi mexido aqui: o daqui vale
+                    sincronizados.add(id)
+                }
+                continue
+            }
+
+            if (sl == null) {
+                if (sigL == sigCloud) {
+                    ed.putString("perfsig_$id", sigL).putString("perfcloud_$id", sigCloud)
+                } else {
+                    registrarEnvio(l, id)   // primeira vez: o celular manda
+                }
+                sincronizados.add(id)
+            } else if (localMudou) {
+                registrarEnvio(l, id)
+                sincronizados.add(id)
+            } else if (sigCloud != sc) {
+                // Só a nuvem mudou (ex.: infantil/avatar alterado na TV): aplica aqui. O nome fica (nome novo = id novo).
+                val novaImg = imagemDaNuvem(ctx, c.imagem, c.kids, id)
+                val atualizado = l.copy(imageUrl = novaImg, isKids = c.kids)
+                dao.updateProfile(atualizado)
+                porId[id] = atualizado
+                mudouLocal = true
+                ed.putString("perfsig_$id", assinatura(atualizado.name, imagemParaNuvem(atualizado.imageUrl), atualizado.isKids))
+                    .putString("perfcloud_$id", sigCloud)
+                sincronizados.add(id)
+            } else {
+                sincronizados.add(id)
             }
         }
-        if (arr.length() == 0) return
-        val corpo = JSONObject().put("user", cred.first).put("pass", cred.second).put("perfis", arr)
-        if (post("/conta/perfis", corpo) != null) {
-            sp.edit().putStringSet("perfis_enviados", idsAgora).apply()
+
+        // 2) Perfis daqui que a nuvem ainda não conhece
+        porId.forEach { (id, l) ->
+            if (!nuvem.containsKey(id)) {
+                registrarEnvio(l, id)
+                sincronizados.add(id)
+            }
+        }
+
+        // 3) Perfis que estavam sincronizados e foram apagados aqui
+        val apagadosAqui = ArrayList<String>()
+        conhecidos.forEach { id ->
+            if (!porId.containsKey(id)) {
+                val c = nuvem[id]
+                if (c != null && !c.removido) {
+                    enviar.put(JSONObject().put("id", id).put("nome", "").put("removido", true).put("atualizado", agora))
+                    apagadosAqui.add(id)
+                }
+            }
+        }
+
+        var enviouOk = true
+        if (enviar.length() > 0) {
+            val corpo = corpoBase(cred).put("perfis", enviar)
+            enviouOk = post("/conta/perfis", corpo) != null
+            if (enviouOk) {
+                sigAposEnvio.forEach { (id, par) ->
+                    ed.putString("perfsig_$id", par.first).putString("perfcloud_$id", par.second)
+                }
+                apagadosAqui.forEach { ed.remove("perfsig_$id").remove("perfcloud_$id") }
+            }
+        }
+
+        // Quem já tinha enviado antes continua "conhecido"; os que acabaram de ir (ou chegaram) entram.
+        val novoConhecidos = HashSet<String>()
+        porId.keys.forEach { id ->
+            if (conhecidos.contains(id) || (sincronizados.contains(id) && (enviouOk || !sigAposEnvio.containsKey(id)))) {
+                novoConhecidos.add(id)
+            }
+        }
+        if (!enviouOk) {
+            conhecidos.forEach { id -> if (!porId.containsKey(id)) novoConhecidos.add(id) }   // tenta avisar a nuvem de novo depois
+        }
+        ed.putStringSet("perfis_enviados", novoConhecidos).apply()
+        return@withLock mudouLocal
+    }
+
+    /** Sincroniza só os perfis, em segundo plano. [aoMudar] roda na thread principal se a lista daqui mudou. */
+    fun sincronizarPerfis(ctx: Context, aoMudar: (() -> Unit)? = null) {
+        val app = ctx.applicationContext
+        scope.launch {
+            val mudou = try { sincronizarPerfisInterno(app) } catch (e: Exception) { Log.w(TAG, "perfis falhou: ${e.message}"); false }
+            if (mudou && aoMudar != null) withContext(Dispatchers.Main) { aoMudar() }
+        }
+    }
+
+    /** Versão para quem já está numa coroutine (ex.: ProfilesActivity antes de criar os perfis padrão). */
+    suspend fun sincronizarPerfisAgora(ctx: Context): Boolean = withContext(Dispatchers.IO) {
+        try { sincronizarPerfisInterno(ctx.applicationContext) } catch (e: Exception) { Log.w(TAG, "perfis falhou: ${e.message}"); false }
+    }
+
+    // ───────────────────────── Envio rápido ao sair das telas de perfil ─────────────────────────
+
+    private var perfisJob: Job? = null
+    private val TELAS_DE_PERFIL = setOf("SettingsActivity", "ProfilesActivity", "EditProfileActivity")
+
+    /** Chamar uma vez no Application: ao sair de uma tela de perfil, manda a mudança logo (1,5 s depois). */
+    fun observarTelasDePerfil(app: Application) {
+        app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityPaused(activity: Activity) {
+                if (activity.javaClass.simpleName in TELAS_DE_PERFIL) agendarEnvioDePerfis(activity.applicationContext)
+            }
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
+    }
+
+    private fun agendarEnvioDePerfis(app: Context) {
+        if (credenciais(app) == null) return
+        perfisJob?.cancel()
+        perfisJob = scope.launch {
+            delay(1_500L)
+            try { sincronizarPerfisInterno(app) } catch (e: Exception) { Log.w(TAG, "perfis falhou: ${e.message}") }
         }
     }
 
@@ -293,7 +544,7 @@ object CloudSync {
         val locais = HashMap<String, WatchHistoryEntity>()
         try { dao.getWatchHistory(perfilNome, 500).forEach { locais[chaveHistorico(it)] = it } } catch (e: Exception) { /* sem histórico local */ }
 
-        val corpo = corpoBase(cred.first, cred.second, pid).put("desde", desde)
+        val corpo = corpoBase(cred, pid).put("desde", desde)
         if (desde == 0L) {
             // Primeira vez deste perfil neste aparelho: sobe o histórico que já existe aqui.
             val semente = JSONArray()
@@ -393,7 +644,7 @@ object CloudSync {
         val sp = ctx.getSharedPreferences(PREFS_SYNC, Context.MODE_PRIVATE)
         val desde = sp.getLong("${pid}_desde_fav", 0L)
 
-        val corpo = corpoBase(cred.first, cred.second, pid).put("desde", desde)
+        val corpo = corpoBase(cred, pid).put("desde", desde)
         if (desde == 0L) {
             // Primeira vez: sobe os favoritos que já existem neste aparelho (t antigo: remoção feita em outro aparelho vence).
             val semente = JSONArray()
