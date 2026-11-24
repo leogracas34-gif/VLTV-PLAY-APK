@@ -44,6 +44,20 @@ class AvatarSelectionDialog(
 
     private val todosAvatares = listOf(
 
+        // ── VLTV (os mesmos da TV: cores, sem personagens) ──
+        AvatarItem("av_vltv_aurora", "Aurora", R.drawable.av_vltv_aurora, "VLTV"),
+        AvatarItem("av_vltv_por_do_sol", "Pôr do sol", R.drawable.av_vltv_por_do_sol, "VLTV"),
+        AvatarItem("av_vltv_oceano", "Oceano", R.drawable.av_vltv_oceano, "VLTV"),
+        AvatarItem("av_vltv_floresta", "Floresta", R.drawable.av_vltv_floresta, "VLTV"),
+        AvatarItem("av_vltv_galaxia", "Galáxia", R.drawable.av_vltv_galaxia, "VLTV"),
+        AvatarItem("av_vltv_fogo", "Fogo", R.drawable.av_vltv_fogo, "VLTV"),
+        AvatarItem("av_vltv_doce", "Doce", R.drawable.av_vltv_doce, "VLTV"),
+        AvatarItem("av_vltv_menta", "Menta", R.drawable.av_vltv_menta, "VLTV"),
+        AvatarItem("av_vltv_ouro", "Ouro", R.drawable.av_vltv_ouro, "VLTV"),
+        AvatarItem("av_vltv_meia_noite", "Meia-noite", R.drawable.av_vltv_meia_noite, "VLTV"),
+        AvatarItem("av_vltv_rosa", "Rosa", R.drawable.av_vltv_rosa, "VLTV"),
+        AvatarItem("av_vltv_grafite", "Grafite", R.drawable.av_vltv_grafite, "VLTV"),
+
         // ── Marvel ──────────────────────────────────────────────────────────
         AvatarItem("av_spider_man",       "Homem-Aranha",          R.drawable.av_spider_man,       "Marvel"),
         AvatarItem("av_deadpool",         "Deadpool",              R.drawable.av_deadpool,         "Marvel"),
@@ -144,6 +158,7 @@ class AvatarSelectionDialog(
     // ─── Cores de anel por categoria ──────────────────────────────────────────
 
     private val ringColorByCat = mapOf(
+        "VLTV"      to Color.parseColor("#7F5AF0"),
         "Marvel"    to Color.parseColor("#FF6B6B"),
         "DC"        to Color.parseColor("#4A90D9"),
         "Disney"    to Color.parseColor("#E040FB"),
@@ -156,7 +171,7 @@ class AvatarSelectionDialog(
 
     // ─── Estado ───────────────────────────────────────────────────────────────
 
-    private val categorias = listOf("Todos", "Marvel", "DC", "Disney", "Star Wars", "Séries", "Ação", "Anime", "Infantil")
+    private val categorias = listOf("Todos", "VLTV", "Marvel", "DC", "Disney", "Star Wars", "Séries", "Ação", "Anime", "Infantil")
     private var categoriaAtual = "Todos"
     private var idSelecionado: String? = null
 

@@ -661,7 +661,7 @@ class ProfilesActivity : AppCompatActivity() {
         val tvExcluir = view.findViewById<View>(R.id.tvExcluirPerfilCompleto)
 
         var avatarSelecionado = perfil.imageUrl
-        exibirAvatar(ivAvatar, avatarSelecionado)
+        exibirAvatar(ivAvatar, avatarSelecionado, perfil.name)
 
         etNome.setText(perfil.name)
         etNome.setSelection(perfil.name.length)
@@ -676,7 +676,7 @@ class ProfilesActivity : AppCompatActivity() {
             val abrirSeletorDeAvatar = {
                 AvatarSelectionDialog(this) { drawableId ->
                     avatarSelecionado = drawableId
-                    exibirAvatar(ivAvatar, avatarSelecionado)
+                    exibirAvatar(ivAvatar, avatarSelecionado, etNome.text.toString().ifBlank { perfil.name })
                 }.show()
             }
             ivAvatar.setOnClickListener { abrirSeletorDeAvatar() }
@@ -735,7 +735,15 @@ class ProfilesActivity : AppCompatActivity() {
         }
     }
 
-    private fun exibirAvatar(imageView: ImageView, drawableId: String?) {
+    private fun exibirAvatar(imageView: ImageView, drawableIdOriginal: String?, nome: String? = null) {
+        // Sem avatar (ou avatar que não existe mais): usa o avatar automático, igual ao da TV (cor + inicial do nome).
+        var drawableId = drawableIdOriginal
+        if (!nome.isNullOrBlank()) {
+            val existe = !drawableId.isNullOrEmpty() &&
+                (drawableId in listOf("av_iron_man", "av_batman", "av_elsa", "av_naruto", "av_infantil") ||
+                    resources.getIdentifier(drawableId, "drawable", packageName) != 0)
+            if (!existe) drawableId = CloudSync.avatarAutomatico(CloudSync.perfilId(nome))
+        }
         val resId = when (drawableId) {
             "av_iron_man" -> R.drawable.av_iron_man
             "av_batman" -> R.drawable.av_batman
@@ -772,6 +780,19 @@ class ProfilesActivity : AppCompatActivity() {
         canvas.drawRoundRect(rect, raio, raio, paint)
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
         canvas.drawBitmap(sourceBitmap, 0f, 0f, paint)
+
+        if (!nome.isNullOrBlank() && drawableId?.startsWith("av_vltv_") == true) {
+            val inicial = nome.trim().take(1).uppercase()
+            val paintLetra = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                textSize = size * 0.5f
+                typeface = Typeface.DEFAULT_BOLD
+                textAlign = Paint.Align.CENTER
+                setShadowLayer(size * 0.04f, 0f, size * 0.015f, Color.parseColor("#47000000"))
+            }
+            val yLetra = size / 2f - (paintLetra.descent() + paintLetra.ascent()) / 2f
+            canvas.drawText(inicial, size / 2f, yLetra, paintLetra)
+        }
 
         val paintBorda = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style       = Paint.Style.STROKE
@@ -814,7 +835,7 @@ class ProfilesActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val perfil = perfis[position]
             holder.b.tvProfileName.text = perfil.name
-            exibirAvatar(holder.b.ivProfileAvatar, perfil.imageUrl)
+            exibirAvatar(holder.b.ivProfileAvatar, perfil.imageUrl, if (perfil.isKids) null else perfil.name)
 
             if (editMode) {
                 holder.b.ivEditOverlay?.visibility = View.VISIBLE
