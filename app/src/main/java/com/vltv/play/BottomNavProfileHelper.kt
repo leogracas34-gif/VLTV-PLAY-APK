@@ -81,13 +81,17 @@ object BottomNavProfileHelper {
 
         if (icone.isNullOrEmpty()) return
 
+        // Avatar antigo (personagem/cor) vira o bichinho automático do perfil, igual ao da TV.
+        val iconeFinal = if (icone.startsWith("http://") || icone.startsWith("https://")) icone
+                         else AvatarHelper.resolver(activity, icone, nome)
+
         // Avatares escolhidos na tela de Perfis são nomes de drawables
-        // locais (ex: "av_iron_man"), não URLs — resolve pro resource ID
+        // locais (ex: "av_vltv_raposa"), não URLs — resolve pro resource ID
         // certo antes de mandar pro Glide. Se algum dia vier uma URL de
         // verdade (http/https), o fallback abaixo continua funcionando.
-        val ehUrlRemota = icone.startsWith("http://") || icone.startsWith("https://")
+        val ehUrlRemota = iconeFinal.startsWith("http://") || iconeFinal.startsWith("https://")
         val resId = if (!ehUrlRemota) {
-            activity.resources.getIdentifier(icone, "drawable", activity.packageName)
+            activity.resources.getIdentifier(iconeFinal, "drawable", activity.packageName)
         } else {
             0
         }
@@ -95,7 +99,7 @@ object BottomNavProfileHelper {
         val requestBuilder = if (resId != 0) {
             Glide.with(activity).asBitmap().load(resId)
         } else {
-            Glide.with(activity).asBitmap().load(icone)
+            Glide.with(activity).asBitmap().load(iconeFinal)
         }
 
         requestBuilder

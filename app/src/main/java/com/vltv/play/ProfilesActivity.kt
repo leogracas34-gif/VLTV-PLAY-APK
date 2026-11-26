@@ -73,11 +73,7 @@ class ProfilesActivity : AppCompatActivity() {
     private val mutex = Mutex()
     private val tmdbApiKey = TmdbConfig.API_KEY
 
-    private val defaultAvatarId1 = "av_iron_man"
-    private val defaultAvatarId2 = "av_batman"
-    private val defaultAvatarId3 = "av_elsa"
-    private val defaultAvatarId4 = "av_naruto"
-    private val defaultAvatarIdInfantil = "av_infantil"
+    private val defaultAvatarIdInfantil = AvatarHelper.KIDS
 
     // ══════════════════════════════════════════════════════════════
     // ARCO (PAINEL DE PERFIS) — raio elíptico igual Netflix
@@ -736,24 +732,10 @@ class ProfilesActivity : AppCompatActivity() {
     }
 
     private fun exibirAvatar(imageView: ImageView, drawableIdOriginal: String?, nome: String? = null) {
-        // Sem avatar (ou avatar que não existe mais): usa o avatar automático, igual ao da TV (cor + inicial do nome).
-        var drawableId = drawableIdOriginal
-        if (!nome.isNullOrBlank()) {
-            val existe = !drawableId.isNullOrEmpty() &&
-                (drawableId in listOf("av_iron_man", "av_batman", "av_elsa", "av_naruto", "av_infantil") ||
-                    resources.getIdentifier(drawableId, "drawable", packageName) != 0)
-            if (!existe) drawableId = CloudSync.avatarAutomatico(CloudSync.perfilId(nome))
-        }
-        val resId = when (drawableId) {
-            "av_iron_man" -> R.drawable.av_iron_man
-            "av_batman" -> R.drawable.av_batman
-            "av_elsa" -> R.drawable.av_elsa
-            "av_naruto" -> R.drawable.av_naruto
-            "av_infantil" -> R.drawable.av_infantil
-            else -> if (!drawableId.isNullOrEmpty())
-                resources.getIdentifier(drawableId, "drawable", packageName)
-            else 0
-        }
+        // Avatar antigo (personagem/cor) ou que não existe mais: vira o bichinho automático, igual ao da TV.
+        val drawableId = if (!nome.isNullOrBlank()) AvatarHelper.resolver(this, drawableIdOriginal, nome)
+                         else drawableIdOriginal
+        val resId = AvatarHelper.resId(this, drawableId)
 
         val drawable = if (resId != 0)
             ContextCompat.getDrawable(this, resId)
@@ -780,19 +762,6 @@ class ProfilesActivity : AppCompatActivity() {
         canvas.drawRoundRect(rect, raio, raio, paint)
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
         canvas.drawBitmap(sourceBitmap, 0f, 0f, paint)
-
-        if (!nome.isNullOrBlank() && drawableId?.startsWith("av_vltv_") == true) {
-            val inicial = nome.trim().take(1).uppercase()
-            val paintLetra = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.WHITE
-                textSize = size * 0.5f
-                typeface = Typeface.DEFAULT_BOLD
-                textAlign = Paint.Align.CENTER
-                setShadowLayer(size * 0.04f, 0f, size * 0.015f, Color.parseColor("#47000000"))
-            }
-            val yLetra = size / 2f - (paintLetra.descent() + paintLetra.ascent()) / 2f
-            canvas.drawText(inicial, size / 2f, yLetra, paintLetra)
-        }
 
         val paintBorda = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style       = Paint.Style.STROKE

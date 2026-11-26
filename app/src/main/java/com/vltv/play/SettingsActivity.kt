@@ -1685,7 +1685,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         // ✅ Usa drawable local no dialog de opções — sem Glide
-        exibirAvatar(imgHeader, perfil.imageUrl)
+        exibirAvatar(imgHeader, AvatarHelper.resolver(this, perfil.imageUrl, perfil.name, perfil.isKids))
 
         val tvNomeHeader = TextView(this).apply {
             text = perfil.name
@@ -2096,7 +2096,7 @@ class SettingsActivity : AppCompatActivity() {
             val jaTemPalavraChave = nomeDigitado.contains("infantil", ignoreCase = true) ||
                                      nomeDigitado.contains("kids", ignoreCase = true)
             val nomeFinal = if (ehInfantil && !jaTemPalavraChave) "$nomeDigitado Infantil" else nomeDigitado
-            val avatarPadrao = if (ehInfantil) "av_infantil" else "av_iron_man"
+            val avatarPadrao = if (ehInfantil) AvatarHelper.KIDS else AvatarHelper.automatico(CloudSync.perfilId(nomeFinal))
 
             lifecycleScope.launch(Dispatchers.IO) {
                 database.streamDao().insertProfile(
@@ -3196,7 +3196,7 @@ class SettingsActivity : AppCompatActivity() {
             holder.tvName.text = perfil.name
 
             // ✅ Usa drawable local — sem Glide, sem rede, instantâneo
-            exibirAvatar(holder.img, perfil.imageUrl)
+            exibirAvatar(holder.img, AvatarHelper.resolver(this@SettingsActivity, perfil.imageUrl, perfil.name, perfil.isKids))
 
             val isAtivo = perfil.name == currentProfileName
             holder.itemView.alpha = if (isAtivo) 1.0f else 0.55f

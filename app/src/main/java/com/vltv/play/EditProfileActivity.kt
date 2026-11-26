@@ -45,9 +45,10 @@ class EditProfileActivity : AppCompatActivity() {
             }
             profile?.let {
                 binding.etEditName.setText(it.name)
-                selectedAvatarId = it.imageUrl
+                // Avatar antigo (personagem/cor) vira o bichinho automático, igual ao da TV
+                selectedAvatarId = AvatarHelper.resolver(this@EditProfileActivity, it.imageUrl, it.name, it.isKids)
                 // ✅ Carrega drawable local pelo nome — instantâneo, sem rede
-                exibirAvatar(it.imageUrl)
+                exibirAvatar(selectedAvatarId)
             }
         }
     }
@@ -61,7 +62,7 @@ class EditProfileActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    // ✅ Resolve "av_iron_man" → R.drawable.av_iron_man e exibe sem Glide
+    // ✅ Resolve "av_vltv_raposa" → R.drawable.av_vltv_raposa e exibe sem Glide
     private fun exibirAvatar(drawableId: String?) {
         val drawable = if (!drawableId.isNullOrEmpty()) {
             val resId = resources.getIdentifier(drawableId, "drawable", packageName)

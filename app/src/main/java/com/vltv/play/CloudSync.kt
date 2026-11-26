@@ -283,41 +283,31 @@ object CloudSync {
     //  - para saber quem mudou, guardamos o que cada perfil era na última sincronização
     //    ("perfsig_<id>" = como estava aqui, "perfcloud_<id>" = como estava na nuvem).
 
-    private val ESTILOS_AVATAR = arrayOf(
-        "aurora", "por-do-sol", "oceano", "floresta", "galaxia", "fogo",
-        "doce", "menta", "ouro", "meia-noite", "rosa", "grafite"
-    )
-    private const val AVATAR_KIDS = "av_infantil"
-    private const val AVATAR_TV_PADRAO = "av_iron_man"   // o que a TV grava quando o perfil não tem imagem
+    private const val AVATAR_KIDS = AvatarHelper.KIDS
     private val perfisMutex = kotlinx.coroutines.sync.Mutex()
 
     private class PerfilNuvem(val id: String, val nome: String, val imagem: String, val kids: Boolean, val removido: Boolean)
 
-    /** Avatar automático (mesma conta da TV): o estilo sai do id do perfil. Ex.: "av_vltv_aurora". */
-    fun avatarAutomatico(id: String): String {
-        var h = 0
-        for (ch in id) h = (h * 31 + ch.code) % 9973
-        return "av_vltv_" + ESTILOS_AVATAR[h % ESTILOS_AVATAR.size].replace('-', '_')
-    }
+    /** Avatar automático (mesma conta da TV): o bichinho sai do id do perfil. Ex.: "av_vltv_raposa". */
+    fun avatarAutomatico(id: String): String = AvatarHelper.automatico(id)
 
-    /** Como a imagem vai para a nuvem: avatar próprio do VLTV vira "vltv:<id>" (a TV desenha igual). */
-    private fun imagemParaNuvem(local: String?): String {
+    /**
+     * Como a imagem vai para a nuvem: avatar próprio do VLTV vira "vltv:<id>" (a TV desenha igual).
+     * Valor antigo (personagem, cor etc.) NUNCA sobe: vira o avatar automático do perfil.
+     */
+    private fun imagemParaNuvem(local: String?, id: String): String {
         val s = local ?: ""
-        return if (s.startsWith("av_vltv_")) "vltv:" + s.removePrefix("av_vltv_").replace('_', '-') else s.take(300)
+        if (s == AVATAR_KIDS) return s
+        val animal = AvatarHelper.idDoAnimal(s) ?: AvatarHelper.idDoAnimal(AvatarHelper.automatico(id))
+        return "vltv:$animal"
     }
 
-    /** Como a imagem vinda da nuvem fica aqui. Sem imagem (ou o padrão da TV) usa o avatar automático. */
+    /** Como a imagem vinda da nuvem fica aqui. Qualquer coisa que o celular não conheça vira o avatar automático. */
     private fun imagemDaNuvem(ctx: Context, nuvem: String, kids: Boolean, id: String): String {
         if (kids) return AVATAR_KIDS
         if (nuvem.startsWith("vltv:")) {
             val nome = "av_vltv_" + nuvem.removePrefix("vltv:").replace('-', '_')
-            if (ctx.resources.getIdentifier(nome, "drawable", ctx.packageName) != 0) return nome
-        } else if (nuvem.startsWith("http://") || nuvem.startsWith("https://")) {
-            return nuvem
-        } else if (nuvem.startsWith("av_") && nuvem != AVATAR_TV_PADRAO &&
-            ctx.resources.getIdentifier(nuvem, "drawable", ctx.packageName) != 0
-        ) {
-            return nuvem
+            if (AvatarHelper.ehAnimal(nome) && AvatarHelper.resId(ctx, nome) != 0) return nome
         }
         return avatarAutomatico(id)
     }
@@ -371,7 +361,7 @@ object CloudSync {
         var mudouLocal = false
 
         fun registrarEnvio(l: ProfileEntity, id: String) {
-            val img = imagemParaNuvem(l.imageUrl)
+            val img = imagemParaNuvem(l.imageUrl, id)
             enviar.put(
                 JSONObject().put("id", id).put("nome", l.name.take(40)).put("imagem", img)
                     .put("kids", l.isKids).put("atualizado", agora)
@@ -396,13 +386,13 @@ object CloudSync {
                 )
                 dao.insertProfile(novo)
                 mudouLocal = true
-                ed.putString("perfsig_$id", assinatura(novo.name, imagemParaNuvem(novo.imageUrl), novo.isKids))
+                ed.putString("perfsig_$id", assinatura(novo.name, imagemParaNuvem(novo.imageUrl, id), novo.isKids))
                     .putString("perfcloud_$id", sigCloud)
                 sincronizados.add(id)
                 continue
             }
 
-            val sigL = assinatura(l.name, imagemParaNuvem(l.imageUrl), l.isKids)
+            val sigL = assinatura(l.name, imagemParaNuvem(l.imageUrl, id), l.isKids)
             val localMudou = sl == null || sigL != sl
 
             if (c.removido) {
@@ -436,7 +426,7 @@ object CloudSync {
                 dao.updateProfile(atualizado)
                 porId[id] = atualizado
                 mudouLocal = true
-                ed.putString("perfsig_$id", assinatura(atualizado.name, imagemParaNuvem(atualizado.imageUrl), atualizado.isKids))
+                ed.putString("perfsig_$id", assinatura(atualizado.name, imagemParaNuvem(atualizado.imageUrl, id), atualizado.isKids))
                     .putString("perfcloud_$id", sigCloud)
                 sincronizados.add(id)
             } else {

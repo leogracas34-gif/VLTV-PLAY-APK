@@ -1653,7 +1653,10 @@ class HomeActivity : AppCompatActivity() {
             profileItem?.title = currentProfile
 
             if (!currentProfileIcon.isNullOrEmpty() && currentProfileIcon != ultimoIconeAplicadoNoNav) {
-                val iconValue = currentProfileIcon!!
+                val iconBruto = currentProfileIcon!!
+                // Avatar antigo (personagem/cor) vira o bichinho automático do perfil, igual ao da TV.
+                val iconValue = if (iconBruto.startsWith("http://") || iconBruto.startsWith("https://")) iconBruto
+                                else AvatarHelper.resolver(this, iconBruto, currentProfile)
                 val ehUrlRemota = iconValue.startsWith("http://") || iconValue.startsWith("https://")
                 val resId = if (!ehUrlRemota) {
                     resources.getIdentifier(iconValue, "drawable", packageName)
@@ -1674,7 +1677,7 @@ class HomeActivity : AppCompatActivity() {
                         override fun onResourceReady(resource: Bitmap, transition: Transition<in Bitmap>?) {
                             if (!isFinishing && !isDestroyed) {
                                 profileItem?.icon = UntintableDrawable(BitmapDrawable(resources, resource))
-                                ultimoIconeAplicadoNoNav = iconValue
+                                ultimoIconeAplicadoNoNav = iconBruto
                             }
                         }
                         override fun onLoadCleared(placeholder: Drawable?) {}

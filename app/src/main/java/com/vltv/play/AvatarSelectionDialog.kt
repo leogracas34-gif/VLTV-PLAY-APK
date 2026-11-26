@@ -14,17 +14,15 @@ import android.widget.*
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.vltv.play.AvatarHelper
 import com.vltv.play.R
 
 /**
- * AvatarSelectionDialog — v4 (2026)
- * - Catálogo totalmente renovado: personagens atuais de Marvel, DC, Disney/Pixar,
- *   Star Wars, Séries, Ação, Anime e um novo grupo Infantil (desenhos).
- * - Corrige o bug de enquadramento: antes a imagem era esticada em setBounds()
- *   direto no view, distorcendo e "cortando" pôsteres que não eram quadrados.
- *   Agora fazemos um center-crop de verdade (com leve viés para o topo em
- *   imagens retrato, onde o rosto do personagem costuma estar), então o avatar
- *   sempre aparece inteiro, centralizado e sem esticar.
+ * AvatarSelectionDialog — v5
+ * Mostra só os 12 avatares próprios do VLTV (bichinhos originais), os MESMOS da TV.
+ * Não há mais personagens de filmes/séries/anime (direito autoral / Google Play).
+ * O id devolvido é o nome do drawable ("av_vltv_raposa"); o CloudSync converte para "vltv:raposa".
+ * O desenho continua com center-crop real dentro do círculo (nunca esticado).
  */
 class AvatarSelectionDialog(
     context: Context,
@@ -40,153 +38,31 @@ class AvatarSelectionDialog(
         val categoria: String
     )
 
-    // ─── Catálogo completo (atualizado 2026) ───────────────────────────────────
+    // ─── Catálogo (igual ao da TV) ─────────────────────────────────────────────
 
-    private val todosAvatares = listOf(
+    private val todosAvatares: List<AvatarItem> by lazy {
+        AvatarHelper.IDS.mapNotNull { id ->
+            val nome = "av_vltv_$id"
+            val res = AvatarHelper.resId(context, nome)
+            if (res == 0) null else AvatarItem(nome, AvatarHelper.NOMES[id] ?: id, res, "VLTV")
+        }
+    }
 
-        // ── VLTV (os mesmos da TV: cores, sem personagens) ──
-        AvatarItem("av_vltv_aurora", "Aurora", R.drawable.av_vltv_aurora, "VLTV"),
-        AvatarItem("av_vltv_por_do_sol", "Pôr do sol", R.drawable.av_vltv_por_do_sol, "VLTV"),
-        AvatarItem("av_vltv_oceano", "Oceano", R.drawable.av_vltv_oceano, "VLTV"),
-        AvatarItem("av_vltv_floresta", "Floresta", R.drawable.av_vltv_floresta, "VLTV"),
-        AvatarItem("av_vltv_galaxia", "Galáxia", R.drawable.av_vltv_galaxia, "VLTV"),
-        AvatarItem("av_vltv_fogo", "Fogo", R.drawable.av_vltv_fogo, "VLTV"),
-        AvatarItem("av_vltv_doce", "Doce", R.drawable.av_vltv_doce, "VLTV"),
-        AvatarItem("av_vltv_menta", "Menta", R.drawable.av_vltv_menta, "VLTV"),
-        AvatarItem("av_vltv_ouro", "Ouro", R.drawable.av_vltv_ouro, "VLTV"),
-        AvatarItem("av_vltv_meia_noite", "Meia-noite", R.drawable.av_vltv_meia_noite, "VLTV"),
-        AvatarItem("av_vltv_rosa", "Rosa", R.drawable.av_vltv_rosa, "VLTV"),
-        AvatarItem("av_vltv_grafite", "Grafite", R.drawable.av_vltv_grafite, "VLTV"),
-
-        // ── Marvel ──────────────────────────────────────────────────────────
-        AvatarItem("av_spider_man",       "Homem-Aranha",          R.drawable.av_spider_man,       "Marvel"),
-        AvatarItem("av_deadpool",         "Deadpool",              R.drawable.av_deadpool,         "Marvel"),
-        AvatarItem("av_wolverine",        "Wolverine",             R.drawable.av_wolverine,        "Marvel"),
-        AvatarItem("av_capitao_america",  "Capitão América",       R.drawable.av_capitao_america,  "Marvel"),
-        AvatarItem("av_thunderbolts",     "Thunderbolts",          R.drawable.av_thunderbolts,     "Marvel"),
-        AvatarItem("av_quarteto_fantastico","Quarteto Fantástico", R.drawable.av_quarteto_fantastico,"Marvel"),
-        AvatarItem("av_loki",             "Loki",                  R.drawable.av_loki,             "Marvel"),
-        AvatarItem("av_wanda",            "Wanda",                 R.drawable.av_wanda,            "Marvel"),
-        AvatarItem("av_venom",            "Venom",                 R.drawable.av_venom,            "Marvel"),
-        AvatarItem("av_x_men",            "X-Men",                 R.drawable.av_x_men,            "Marvel"),
-
-        // ── DC ──────────────────────────────────────────────────────────────
-        AvatarItem("av_superman",         "Superman",              R.drawable.av_superman,         "DC"),
-        AvatarItem("av_batman",           "Batman",                R.drawable.av_batman,           "DC"),
-        AvatarItem("av_wonder_woman",     "Mulher Maravilha",      R.drawable.av_wonder_woman,     "DC"),
-        AvatarItem("av_harley_quinn",     "Arlequina",             R.drawable.av_harley_quinn,     "DC"),
-        AvatarItem("av_joker",            "Coringa",               R.drawable.av_joker,            "DC"),
-        AvatarItem("av_penguim",          "Pinguim",               R.drawable.av_penguim,          "DC"),
-        AvatarItem("av_peacemaker",       "Peacemaker",            R.drawable.av_peacemaker,       "DC"),
-        AvatarItem("av_supergirl",        "Supergirl",             R.drawable.av_supergirl,        "DC"),
-        AvatarItem("av_lanterna_verde",   "Lanterna Verde",        R.drawable.av_lanterna_verde,   "DC"),
-        AvatarItem("av_creature_commandos","Creature Commandos",   R.drawable.av_creature_commandos,"DC"),
-
-        // ── Disney / Pixar ───────────────────────────────────────────────────
-        AvatarItem("av_moana",            "Moana",                 R.drawable.av_moana,            "Disney"),
-        AvatarItem("av_elsa",             "Elsa",                  R.drawable.av_elsa,             "Disney"),
-        AvatarItem("av_asha",             "Asha",                  R.drawable.av_asha,             "Disney"),
-        AvatarItem("av_joy",              "Alegria",               R.drawable.av_joy,              "Disney"),
-        AvatarItem("av_mufasa",           "Mufasa",                R.drawable.av_mufasa,           "Disney"),
-        AvatarItem("av_judy_hopps",       "Judy Hopps",            R.drawable.av_judy_hopps,       "Disney"),
-        AvatarItem("av_elio",             "Elio",                  R.drawable.av_elio,             "Disney"),
-        AvatarItem("av_stitch",           "Stitch",                R.drawable.av_stitch,           "Disney"),
-        AvatarItem("av_encanto",          "Mirabel",               R.drawable.av_encanto,          "Disney"),
-        AvatarItem("av_luca",             "Luca",                  R.drawable.av_luca,             "Disney"),
-
-        // ── Star Wars ────────────────────────────────────────────────────────
-        AvatarItem("av_ahsoka",           "Ahsoka",                R.drawable.av_ahsoka,           "Star Wars"),
-        AvatarItem("av_mandalorian",      "Mandalorian",           R.drawable.av_mandalorian,      "Star Wars"),
-        AvatarItem("av_grogu",            "Grogu",                 R.drawable.av_grogu,            "Star Wars"),
-        AvatarItem("av_andor",            "Cassian Andor",         R.drawable.av_andor,            "Star Wars"),
-        AvatarItem("av_boba_fett",        "Boba Fett",             R.drawable.av_boba_fett,        "Star Wars"),
-        AvatarItem("av_skeleton_crew",    "Skeleton Crew",         R.drawable.av_skeleton_crew,    "Star Wars"),
-        AvatarItem("av_darth_vader",      "Darth Vader",           R.drawable.av_darth_vader,      "Star Wars"),
-        AvatarItem("av_rey",              "Rey",                   R.drawable.av_rey,              "Star Wars"),
-        AvatarItem("av_kylo_ren",         "Kylo Ren",              R.drawable.av_kylo_ren,         "Star Wars"),
-        AvatarItem("av_acolyte",          "The Acolyte",           R.drawable.av_acolyte,          "Star Wars"),
-
-        // ── Séries ───────────────────────────────────────────────────────────
-        AvatarItem("av_stranger_things",  "Stranger Things",       R.drawable.av_stranger_things,  "Séries"),
-        AvatarItem("av_wednesday",        "Wandinha",              R.drawable.av_wednesday,        "Séries"),
-        AvatarItem("av_the_last_of_us",   "The Last of Us",        R.drawable.av_the_last_of_us,   "Séries"),
-        AvatarItem("av_house_dragon",     "House of the Dragon",   R.drawable.av_house_dragon,     "Séries"),
-        AvatarItem("av_the_boys",         "The Boys",              R.drawable.av_the_boys,         "Séries"),
-        AvatarItem("av_squid_game",       "Round 6",               R.drawable.av_squid_game,       "Séries"),
-        AvatarItem("av_arcane",           "Arcane",                R.drawable.av_arcane,           "Séries"),
-        AvatarItem("av_bridgerton",       "Bridgerton",            R.drawable.av_bridgerton,       "Séries"),
-        AvatarItem("av_severance",        "Severance",             R.drawable.av_severance,        "Séries"),
-        AvatarItem("av_fallout",          "Fallout",               R.drawable.av_fallout,          "Séries"),
-
-        // ── Ação ─────────────────────────────────────────────────────────────
-        AvatarItem("av_john_wick",        "John Wick",             R.drawable.av_john_wick,        "Ação"),
-        AvatarItem("av_ethan_hunt",       "Ethan Hunt",            R.drawable.av_ethan_hunt,       "Ação"),
-        AvatarItem("av_dune",             "Paul Atreides",         R.drawable.av_dune,             "Ação"),
-        AvatarItem("av_top_gun",          "Top Gun",               R.drawable.av_top_gun,          "Ação"),
-        AvatarItem("av_gladiador",        "Gladiador",             R.drawable.av_gladiador,        "Ação"),
-        AvatarItem("av_furiosa",          "Furiosa",               R.drawable.av_furiosa,          "Ação"),
-        AvatarItem("av_f1",               "F1",                    R.drawable.av_f1,               "Ação"),
-        AvatarItem("av_venganca",         "The Beekeeper",         R.drawable.av_venganca,         "Ação"),
-        AvatarItem("av_equalizer",        "Equalizer",             R.drawable.av_equalizer,        "Ação"),
-        AvatarItem("av_matrix",           "Matrix",                R.drawable.av_matrix,           "Ação"),
-
-        // ── Anime ─────────────────────────────────────────────────────────────
-        AvatarItem("av_gojo",             "Gojo Satoru",           R.drawable.av_gojo,             "Anime"),
-        AvatarItem("av_tanjiro",          "Tanjiro",               R.drawable.av_tanjiro,          "Anime"),
-        AvatarItem("av_denji",            "Chainsaw Man",          R.drawable.av_denji,            "Anime"),
-        AvatarItem("av_luffy",            "Luffy",                 R.drawable.av_luffy,            "Anime"),
-        AvatarItem("av_eren",             "Eren Jaeger",           R.drawable.av_eren,             "Anime"),
-        AvatarItem("av_anya",             "Anya Forger",           R.drawable.av_anya,             "Anime"),
-        AvatarItem("av_deku",             "Deku",                  R.drawable.av_deku,             "Anime"),
-        AvatarItem("av_jinwoo",           "Sung Jinwoo",           R.drawable.av_jinwoo,           "Anime"),
-        AvatarItem("av_frieren",          "Frieren",               R.drawable.av_frieren,          "Anime"),
-        AvatarItem("av_naruto",           "Naruto",                R.drawable.av_naruto,           "Anime"),
-
-        // ── Infantil ─────────────────────────────────────────────────────────
-        AvatarItem("av_bluey",            "Bluey",                 R.drawable.av_bluey,            "Infantil"),
-        AvatarItem("av_mario",            "Mario",                 R.drawable.av_mario,            "Infantil"),
-        AvatarItem("av_sonic",            "Sonic",                 R.drawable.av_sonic,            "Infantil"),
-        AvatarItem("av_patrulha_canina",  "Patrulha Canina",       R.drawable.av_patrulha_canina,  "Infantil"),
-        AvatarItem("av_gabby",            "Gabby's Dollhouse",     R.drawable.av_gabby,            "Infantil"),
-        AvatarItem("av_turma_monica",     "Turma da Mônica",       R.drawable.av_turma_monica,     "Infantil"),
-        AvatarItem("av_minions",          "Minions",               R.drawable.av_minions,          "Infantil"),
-        AvatarItem("av_pj_masks",         "PJ Masks",              R.drawable.av_pj_masks,         "Infantil"),
-        AvatarItem("av_peppa",            "Peppa Pig",             R.drawable.av_peppa,            "Infantil"),
-        AvatarItem("av_kung_fu_panda",    "Kung Fu Panda",         R.drawable.av_kung_fu_panda,    "Infantil"),
-    )
-
-    // ─── Cores de anel por categoria ──────────────────────────────────────────
-
-    private val ringColorByCat = mapOf(
-        "VLTV"      to Color.parseColor("#7F5AF0"),
-        "Marvel"    to Color.parseColor("#FF6B6B"),
-        "DC"        to Color.parseColor("#4A90D9"),
-        "Disney"    to Color.parseColor("#E040FB"),
-        "Star Wars" to Color.parseColor("#00B4D8"),
-        "Séries"    to Color.parseColor("#27AE60"),
-        "Ação"      to Color.parseColor("#E67E22"),
-        "Anime"     to Color.parseColor("#FF6EC7"),
-        "Infantil"  to Color.parseColor("#FFC107"),
-    )
+    private val ringColorByCat = mapOf("VLTV" to Color.parseColor("#7F5AF0"))
 
     // ─── Estado ───────────────────────────────────────────────────────────────
 
-    private val categorias = listOf("Todos", "VLTV", "Marvel", "DC", "Disney", "Star Wars", "Séries", "Ação", "Anime", "Infantil")
-    private var categoriaAtual = "Todos"
     private var idSelecionado: String? = null
 
     private var btnConfirmar: TextView? = null
     private var gridAdapter: AvatarGridAdapter? = null
-    private val chipViews = mutableMapOf<String, TextView>()
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private val Int.dp: Int get() = (this * context.resources.displayMetrics.density).toInt()
     private val Float.dp: Float get() = (this * context.resources.displayMetrics.density)
 
-    private fun filtrados() =
-        if (categoriaAtual == "Todos") todosAvatares
-        else todosAvatares.filter { it.categoria == categoriaAtual }
+    private fun filtrados() = todosAvatares
 
     private fun atualizarBotao() {
         val ativo = idSelecionado != null
@@ -201,21 +77,6 @@ class AvatarSelectionDialog(
                 bg?.setColor(Color.parseColor("#1A1A1A"))
                 bg?.setStroke(1.dp, Color.parseColor("#2A2A2A"))
                 setTextColor(Color.parseColor("#444444"))
-            }
-        }
-    }
-
-    private fun atualizarChips(selecionada: String) {
-        chipViews.forEach { (cat, chip) ->
-            val bg = chip.background as? android.graphics.drawable.GradientDrawable
-            if (cat == selecionada) {
-                bg?.setStroke(2.dp, Color.parseColor("#FFD700"))
-                chip.setTextColor(Color.WHITE)
-                chip.typeface = Typeface.DEFAULT_BOLD
-            } else {
-                bg?.setStroke(1.dp, Color.parseColor("#333333"))
-                chip.setTextColor(Color.parseColor("#777777"))
-                chip.typeface = Typeface.DEFAULT
             }
         }
     }
@@ -244,7 +105,7 @@ class AvatarSelectionDialog(
             setPadding(20.dp, 18.dp, 20.dp, 14.dp)
         }
         header.addView(TextView(context).apply {
-            text = "Escolher Avatar"
+            text = "Escolher avatar"
             textSize = 17f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -258,42 +119,6 @@ class AvatarSelectionDialog(
             setOnClickListener { dismiss() }
         })
 
-        // Chips de categoria
-        val scroll = HorizontalScrollView(context).apply {
-            isHorizontalScrollBarEnabled = false
-        }
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(12.dp, 10.dp, 12.dp, 10.dp)
-        }
-        categorias.forEach { cat ->
-            val chip = TextView(context).apply {
-                text = cat
-                textSize = 12f
-                setPadding(16.dp, 7.dp, 16.dp, 7.dp)
-                setTextColor(Color.parseColor("#777777"))
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    setColor(Color.TRANSPARENT)
-                    cornerRadius = 20f.dp
-                    setStroke(1.dp, Color.parseColor("#333333"))
-                }
-                layoutParams = LinearLayout.LayoutParams(WRAP, WRAP).apply {
-                    setMargins(4.dp, 0, 4.dp, 0)
-                }
-                setOnClickListener {
-                    categoriaAtual = cat
-                    atualizarChips(cat)
-                    idSelecionado = null
-                    atualizarBotao()
-                    gridAdapter?.updateList(filtrados())
-                }
-            }
-            chipViews[cat] = chip
-            row.addView(chip)
-        }
-        atualizarChips("Todos")
-        scroll.addView(row)
-
         // Grid de avatares
         gridAdapter = AvatarGridAdapter(filtrados()) { id ->
             idSelecionado = id
@@ -306,7 +131,7 @@ class AvatarSelectionDialog(
             clipToPadding = false
             adapter = gridAdapter
             setHasFixedSize(false)
-            setItemViewCacheSize(30)
+            setItemViewCacheSize(12)
         }
 
         // Footer / Botão confirmar
@@ -343,8 +168,6 @@ class AvatarSelectionDialog(
         footer.addView(btn)
 
         root.addView(header)
-        root.addView(divider())
-        root.addView(scroll)
         root.addView(divider())
         root.addView(recycler)
         root.addView(footer)
