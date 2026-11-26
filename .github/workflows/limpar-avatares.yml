@@ -1,0 +1,45 @@
+name: Limpar avatares de personagens
+
+# Roda manualmente: GitHub (app ou site) > Actions > "Limpar avatares de personagens" > Run workflow.
+# Apaga as imagens de personagens (Marvel, DC, Disney, anime etc.) e as 12 cores antigas.
+# Mantém: av_infantil.png e os 12 av_vltv_<bichinho>.png.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  limpar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Apagar personagens e cores antigas
+        run: |
+          cd app/src/main/res/drawable
+          MANTER="av_infantil.png av_vltv_raposa.png av_vltv_gato.png av_vltv_coruja.png av_vltv_urso.png av_vltv_robo.png av_vltv_astronauta.png av_vltv_dino.png av_vltv_polvo.png av_vltv_coelho.png av_vltv_sapo.png av_vltv_pinguim.png av_vltv_alien.png"
+          # confere se os 12 bichinhos já foram enviados antes de apagar qualquer coisa
+          for f in $MANTER; do
+            [ -f "$f" ] || { echo "FALTA $f — envie os 12 bichinhos antes de rodar."; exit 1; }
+          done
+          for f in av_*.png av_*.jpg av_*.webp; do
+            [ -f "$f" ] || continue
+            case " $MANTER " in *" $f "*) continue ;; esac
+            git rm -q "$f"
+            echo "apagado: $f"
+          done
+          # as 12 cores antigas (xml) não são mais usadas
+          for f in av_vltv_*.xml; do
+            [ -f "$f" ] || continue
+            git rm -q "$f"
+            echo "apagado: $f"
+          done
+
+      - name: Commitar e enviar (push)
+        run: |
+          git config user.name "vltv-bot"
+          git config user.email "bot@vltvplay.tech"
+          git diff --cached --quiet || git commit -m "chore: remove avatares de personagens (direito autoral)"
+          git push
