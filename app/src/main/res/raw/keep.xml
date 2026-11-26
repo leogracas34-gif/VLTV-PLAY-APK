@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Impede o shrinkResources (build de release) de apagar os avatares.
+  O app carrega os avatares pelo NOME (getIdentifier), então o R8 achava que
+  os PNGs não eram usados e removia todos do APK/AAB.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/av_infantil,@drawable/av_vltv_*"
+    tools:shrinkMode="safe" />
